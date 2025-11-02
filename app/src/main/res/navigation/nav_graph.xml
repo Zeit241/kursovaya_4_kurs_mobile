@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/nav_home">
+
+
+    <fragment
+        android:id="@+id/nav_home"
+        android:name="com.example.kursovaya.fragment.HomeFragment"
+        android:label="fragment_home"
+        tools:layout="@layout/fragment_home">
+        <action
+            android:id="@+id/action_nav_home_to_doctorsFragment"
+            app:destination="@id/doctorsFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/nav_map"
+        android:name="com.example.kursovaya.fragment.MapFragment"
+        android:label="fragment_map"
+        tools:layout="@layout/fragment_map" />
+
+    <navigation
+        android:id="@+id/nav_doctors"
+        app:startDestination="@id/doctorsFragment">
+
+        <fragment
+            android:id="@+id/doctorsFragment"
+            android:name="com.example.kursovaya.fragment.DoctorsFragment"
+            android:label="fragment_doctors"
+            tools:layout="@layout/fragment_doctors">
+            <argument
+                android:name="SPECIALTY"
+                app:argType="string"
+                app:nullable="true" />
+            <action
+                android:id="@+id/action_doctorsFragment_to_doctorProfileFragment"
+                app:destination="@id/doctorProfileFragment" />
+            <action
+                android:id="@+id/action_doctorsFragment_to_bookingFragment"
+                app:destination="@id/bookingFragment" />
+        </fragment>
+
+        <fragment
+            android:id="@+id/doctorProfileFragment"
+            android:name="com.example.kursovaya.fragment.DoctorProfileFragment"
+            android:label="fragment_doctor_profile"
+            tools:layout="@layout/fragment_doctor_profile">
+            <argument
+                android:name="DOCTOR_ID"
+                app:argType="string" />
+            <action
+                android:id="@+id/action_doctorProfileFragment_to_bookingFragment"
+                app:destination="@id/bookingFragment" />
+        </fragment>
+
+        <fragment
+            android:id="@+id/bookingFragment"
+            android:name="com.example.kursovaya.fragment.BookingFragment"
+            android:label="fragment_booking"
+            tools:layout="@layout/fragment_booking">
+            <argument
+                android:name="DOCTOR_ID"
+                app:argType="string"
+                app:nullable="true" />
+        </fragment>
+
+    </navigation>
+
+    <fragment
+        android:id="@+id/nav_queue"
+        android:name="com.example.kursovaya.fragment.QueueFragment"
+        android:label="fragment_queue"
+        tools:layout="@layout/fragment_queue" />
+
+    <fragment
+        android:id="@+id/nav_reviews"
+        android:name="com.example.kursovaya.fragment.ReviewsFragment"
+        android:label="fragment_reviews"
+        tools:layout="@layout/fragment_reviews" />
+
+    <fragment
+        android:id="@+id/nav_profile"
+        android:name="com.example.kursovaya.fragment.ProfileFragment"
+        android:label="fragment_profile">
+        <action
+            android:id="@+id/action_profileFragment_to_appointmentHistoryFragment"
+            app:destination="@id/appointmentHistoryFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/appointmentHistoryFragment"
+        android:name="com.example.kursovaya.fragment.AppointmentHistoryFragment"
+        android:label="fragment_appointment_history"
+        tools:layout="@layout/fragment_appointment_history">
+        <action
+            android:id="@+id/action_appointmentHistoryFragment_to_appointmentDetailsFragment"
+            app:destination="@id/appointmentDetailsFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/appointmentDetailsFragment"
+        android:name="com.example.kursovaya.fragment.AppointmentDetailsFragment"
+        android:label="fragment_appointment_details"
+        tools:layout="@layout/fragment_appointment_details">
+        <argument
+            android:name="appointment"
+            app:argType="com.example.kursovaya.model.Appointment" />
+    </fragment>
+
+</navigation>

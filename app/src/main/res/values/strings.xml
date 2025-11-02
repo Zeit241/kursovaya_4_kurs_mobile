@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">Kursovaya</string>
+    <string name="weclome_back">Добро пожаловать</string>
+    <string name="enter_your_credentials_to_access_your_account">Введите данные для входа в аккаунт</string>
+    <string name="name">MedClinic</string>
+    <string name="slug">Your health partner</string>
+    <string name="remember_me">Запомнить меня</string>
+    <string name="view_all">Смотреть все</string>
+    <string name="book">Записаться</string>
+</resources>
