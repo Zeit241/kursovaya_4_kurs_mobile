@@ -1,71 +1,41 @@
 package com.example.kursovaya.fragment
 
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.os.bundleOf
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
+import com.bumptech.glide.Glide
 import com.example.kursovaya.R
 import com.example.kursovaya.adapter.ProfileViewPagerAdapter
+import com.example.kursovaya.api.RetrofitClient
 import com.example.kursovaya.databinding.FragmentDoctorProfileBinding
 import com.example.kursovaya.model.DoctorProfile
-import com.example.kursovaya.model.Education
-import com.example.kursovaya.model.Review
+import com.example.kursovaya.model.api.DoctorApi
+import com.example.kursovaya.repository.DoctorsRepository
+import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.tabs.TabLayoutMediator
+import kotlinx.coroutines.launch
 
 class DoctorProfileFragment : Fragment() {
 
     private var _binding: FragmentDoctorProfileBinding? = null
     private val binding get() = _binding!!
-
-    private val mockDoctorData = mapOf(
-        "1" to DoctorProfile(
-            id = "1",
-            name = "Dr. Sarah Johnson",
-            specialty = "Cardiologist",
-            rating = 4.9,
-            education = listOf(
-                Education("MD in Cardiology", "Harvard Medical School", "2008"),
-                Education("MBBS", "Johns Hopkins University", "2004")
-            ),
-            reviews = listOf(
-                Review(
-                    authorName = "John Doe",
-                    rating = 5,
-                    relativeTimeDescription = "1 week ago",
-                    text = "Excellent and caring doctor. Explained everything clearly."
-                ),
-                Review(
-                    authorName = "Maria Garcia",
-                    rating = 5,
-                    relativeTimeDescription = "1 month ago",
-                    text = "Very professional and knowledgeable. Highly recommend!"
-                ),
-                Review(
-                    authorName = "David Lee",
-                    rating = 4,
-                    relativeTimeDescription = "2 months ago",
-                    text = "Great doctor, but the wait time was a bit long."
-                )
-            ),
-            reviewCount = 3, 
-            experience = "15 years", 
-            location = "Central Clinic, Springfield", 
-            availability = "Mon-Fri", 
-            image = "doctor_image_placeholder",
-            consultationFee = "150", 
-            about = "Dr. Sarah Johnson is a renowned cardiologist with over 15 years of experience..."
-        )
-    )
+    private lateinit var doctorsRepository: DoctorsRepository
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
         _binding = FragmentDoctorProfileBinding.inflate(inflater, container, false)
+        // Убеждаемся, что RetrofitClient инициализирован
+        com.example.kursovaya.api.RetrofitClient.init(requireContext())
+        doctorsRepository = DoctorsRepository(requireContext())
         return binding.root
     }
 
@@ -94,6 +64,40 @@ class DoctorProfileFragment : Fragment() {
             findNavController().navigate(R.id.action_doctorProfileFragment_to_bookingFragment, bundle)
         }
     }
+    
+    private fun DoctorApi.toDoctorProfile(): DoctorProfile {
+        val fullName = buildString {
+            append(user.lastName)
+            if (user.firstName.isNotEmpty()) {
+                append(" ${user.firstName}")
+            }
+            if (user.middleName.isNotEmpty()) {
+                append(" ${user.middleName}")
+            }
+        }.trim()
+        
+        val specialtyText = if (!specializations.isNullOrEmpty()) {
+            specializations.joinToString(", ") { it.name }
+        } else {
+            bio ?: "Врач"
+        }
+        
+        return DoctorProfile(
+            id = id.toString(),
+            name = fullName.ifEmpty { user.email },
+            specialty = specialtyText,
+            rating = rating ?: 0.0,
+            reviewCount = reviewCount ?: 0,
+            experience = "$experienceYears лет",
+            location = "",
+            availability = "",
+            image = photoUrl ?: "",
+            consultationFee = "",
+            about = bio ?: "",
+            education = emptyList(),
+            reviews = emptyList()
+        )
+    }
 
     private fun setupToolbar() {
         (activity as? AppCompatActivity)?.setSupportActionBar(binding.toolbar)
@@ -102,16 +106,70 @@ class DoctorProfileFragment : Fragment() {
     }
 
     private fun loadDoctorData(doctorId: String?) {
-        val doctor = mockDoctorData[doctorId] ?: mockDoctorData.values.first()
-
-        binding.doctorNameTextView.text = doctor.name
-        binding.doctorSpecialtyTextView.text = doctor.specialty
-        binding.doctorRatingTextView.text = doctor.rating.toString()
-        binding.doctorReviewsTextView.text = "(${doctor.reviewCount} отзывов)"
-
-        val imageResId = resources.getIdentifier(doctor.image, "drawable", requireContext().packageName)
-        if (imageResId != 0) {
-            binding.doctorImageView.setImageResource(imageResId)
+        if (doctorId == null) {
+            Snackbar.make(binding.root, "ID врача не указан", Snackbar.LENGTH_SHORT).show()
+            return
+        }
+        
+        val id = doctorId.toLongOrNull()
+        if (id == null) {
+            Snackbar.make(binding.root, "Неверный ID врача", Snackbar.LENGTH_SHORT).show()
+            return
+        }
+        
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                doctorsRepository.getDoctorById(id)
+                    .onSuccess { doctorApi ->
+                        if (_binding == null) return@onSuccess
+                        
+                        val doctor = doctorApi.toDoctorProfile()
+                        
+                        binding.doctorNameTextView.text = doctor.name
+                        binding.doctorSpecialtyTextView.text = doctor.specialty
+                        binding.doctorRatingTextView.text = doctor.rating.toString()
+                        binding.doctorReviewsTextView.text = "(${doctor.reviewCount} отзывов)"
+                        
+                        // Загружаем изображение
+                        if (doctor.image.isNotEmpty()) {
+                            Glide.with(requireContext())
+                                .load(doctor.image)
+                                .placeholder(R.drawable.placeholder_doctor)
+                                .error(R.drawable.placeholder_doctor)
+                                .into(binding.doctorImageView)
+                        } else {
+                            val imageResId = resources.getIdentifier(
+                                "placeholder_doctor",
+                                "drawable",
+                                requireContext().packageName
+                            )
+                            if (imageResId != 0) {
+                                binding.doctorImageView.setImageResource(imageResId)
+                            }
+                        }
+                        
+                        Log.d("DoctorProfileFragment", "Loaded doctor: ${doctor.name}")
+                    }
+                    .onFailure { error ->
+                        if (_binding == null) return@launch
+                        Log.e("DoctorProfileFragment", "Error loading doctor", error)
+                        Snackbar.make(
+                            binding.root,
+                            "Ошибка загрузки данных врача: ${error.message}",
+                            Snackbar.LENGTH_LONG
+                        ).show()
+                    }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                if (_binding == null) return@launch
+                Log.e("DoctorProfileFragment", "Unexpected error", e)
+                Snackbar.make(
+                    binding.root,
+                    "Ошибка загрузки данных врача",
+                    Snackbar.LENGTH_LONG
+                ).show()
+            }
         }
     }
 

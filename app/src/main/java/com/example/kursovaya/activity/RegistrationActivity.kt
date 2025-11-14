@@ -50,9 +50,13 @@ class RegistrationActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
+            // Передаем данные на следующий шаг регистрации
             val intent = Intent(this, RegistrationStep2Activity::class.java)
-            // You can pass data to the next activity using extras if needed
-            // intent.putExtra("email", email)
+            intent.putExtra("email", email)
+            intent.putExtra("phone", phone)
+            intent.putExtra("password", password)
+            intent.putExtra("confirmPassword", confirmPassword)
+            intent.putExtra("fio", fullName)
             startActivity(intent)
         }
     }

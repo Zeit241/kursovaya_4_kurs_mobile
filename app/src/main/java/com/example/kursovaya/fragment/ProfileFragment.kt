@@ -2,12 +2,14 @@ package com.example.kursovaya.fragment
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.Toast
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import com.example.kursovaya.R
 import com.example.kursovaya.activity.LoginActivity
@@ -15,12 +17,15 @@ import com.example.kursovaya.adapter.MenuAdapter
 import com.example.kursovaya.databinding.FragmentProfileBinding
 import com.example.kursovaya.model.MenuItem
 import com.example.kursovaya.repository.AuthRepository
+import com.example.kursovaya.repository.DoctorsRepository
+import kotlinx.coroutines.launch
 
 class ProfileFragment : Fragment() {
 
     private var _binding: FragmentProfileBinding? = null
     private val binding get() = _binding!!
     private lateinit var authRepository: AuthRepository
+    private lateinit var doctorsRepository: DoctorsRepository
     private lateinit var menuAdapter: MenuAdapter
 
     override fun onCreateView(
@@ -28,7 +33,10 @@ class ProfileFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View {
         _binding = FragmentProfileBinding.inflate(inflater, container, false)
+        // Убеждаемся, что RetrofitClient инициализирован
+        com.example.kursovaya.api.RetrofitClient.init(requireContext())
         authRepository = AuthRepository(requireContext())
+        doctorsRepository = DoctorsRepository(requireContext())
         return binding.root
     }
 
@@ -79,6 +87,23 @@ class ProfileFragment : Fragment() {
         binding.appointmentsCountTextView.text = "12"
         // Установка изображения
         binding.userImageView.setImageResource(R.drawable.placeholder_doctor)
+        
+        // Загружаем топ-10 врачей по рейтингу
+        loadTopDoctors()
+    }
+    
+    private fun loadTopDoctors() {
+        lifecycleScope.launch {
+            doctorsRepository.getTopDoctorsByRating(limit = 10)
+                .onSuccess { doctorsApi ->
+                    Log.d("ProfileFragment", "Loaded ${doctorsApi.size} top doctors")
+                    // Здесь можно отобразить топ врачей, если есть UI элемент
+                    // Например, в RecyclerView или другом виджете
+                }
+                .onFailure { error ->
+                    Log.e("ProfileFragment", "Error loading top doctors", error)
+                }
+        }
     }
 
     private fun showToast(message: String) {

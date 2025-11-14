@@ -134,7 +134,7 @@
         android:layout_margin="16dp"
         android:backgroundTint="@color/primary_light"
         android:text="Записаться на прием"
-        android:textColor="@color/primary_light"
+        android:textColor="@color/primary_dark"
         app:icon="@drawable/ic_calendar"
         app:iconTint="@color/primary_dark" />
 

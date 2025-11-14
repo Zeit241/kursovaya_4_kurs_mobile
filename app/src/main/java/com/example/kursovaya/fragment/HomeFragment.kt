@@ -76,14 +76,14 @@ class HomeFragment : Fragment() {
                 // You can set a style from your theme if you have one
                 // setChipStyle(R.style.Widget_MaterialComponents_Chip_Suggestion)
             }
-            chip.setOnClickListener {
-                val mapped = mapSpecialtyForDoctors(specialty)
-                val action = HomeFragmentDirections.actionNavHomeToDoctorsFragment(mapped)
-                findNavController().navigate(action)
-                // Синхронизируем выделение нижнего меню со сменой вкладки
-                val bottomNav = requireActivity().findViewById<com.google.android.material.bottomnavigation.BottomNavigationView>(R.id.bottomNavigation)
-                bottomNav?.selectedItemId = R.id.nav_doctors
-            }
+//            chip.setOnClickListener {
+//                val mapped = mapSpecialtyForDoctors(specialty)
+//                val action = HomeFragmentDirections.actionNavHomeToDoctorsFragment(mapped)
+//                findNavController().navigate(action)
+//                // Синхронизируем выделение нижнего меню со сменой вкладки
+//                val bottomNav = requireActivity().findViewById<com.google.android.material.bottomnavigation.BottomNavigationView>(R.id.bottomNavigation)
+//                bottomNav?.selectedItemId = R.id.nav_doctors
+//            }
             chipGroup.addView(chip)
         }
     }
@@ -138,7 +138,7 @@ class HomeFragment : Fragment() {
                 startActivity(intent)
             }
 
-           
+
 
             doctorsContainer.addView(doctorCardView)
         }

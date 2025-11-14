@@ -39,6 +39,9 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
+        // Инициализируем RetrofitClient для добавления JWT токена
+        com.example.kursovaya.api.RetrofitClient.init(this)
+
         setContentView(R.layout.activity_main)
 
         val navHostFragment =

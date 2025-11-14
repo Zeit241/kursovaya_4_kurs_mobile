@@ -30,7 +30,7 @@ class AuthRepository(context: Context) {
     fun saveAuthToken(token: String) {
         sharedPreferences.edit()
             .putString("access_token", token)
-            .apply()
+            .commit() // Используем commit() для синхронного сохранения
     }
 
     fun clearAuth() {

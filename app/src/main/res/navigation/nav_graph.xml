@@ -31,10 +31,6 @@
             android:name="com.example.kursovaya.fragment.DoctorsFragment"
             android:label="fragment_doctors"
             tools:layout="@layout/fragment_doctors">
-            <argument
-                android:name="SPECIALTY"
-                app:argType="string"
-                app:nullable="true" />
             <action
                 android:id="@+id/action_doctorsFragment_to_doctorProfileFragment"
                 app:destination="@id/doctorProfileFragment" />

@@ -22,7 +22,14 @@
                 android:layout_marginBottom="12dp"
                 android:text="Часы работы"
                 android:textAppearance="?attr/textAppearanceTitleMedium" />
-            <!-- Сюда можно будет динамически добавлять TextView для каждого дня -->
+
+            <TextView
+                android:id="@+id/scheduleTextView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/no_schedule_available"
+                android:textAppearance="?attr/textAppearanceBodyMedium"
+                android:textColor="?android:attr/textColorSecondary" />
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 

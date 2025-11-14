@@ -7,4 +7,10 @@
     <string name="remember_me">Запомнить меня</string>
     <string name="view_all">Смотреть все</string>
     <string name="book">Записаться</string>
+    <string name="empty_doctors_description">Нет врачей</string>
+    <string name="no_doctors_found">Врачи не найдены</string>
+    <string name="try_different_search">Попробуйте изменить параметры поиска</string>
+    <string name="no_reviews">Отзывов пока нет</string>
+    <string name="no_reviews_subtext">Будьте первым, кто оставит отзыв об этом враче</string>
+    <string name="no_schedule_available">Информация о часах работы отсутствует</string>
 </resources>

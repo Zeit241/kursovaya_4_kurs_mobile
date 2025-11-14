@@ -57,4 +57,17 @@ dependencies {
 //    implementation("com.google.android.material:material:1.11.0")
     implementation(libs.androidx.navigation.fragment.ktx)
     implementation(libs.androidx.navigation.ui.ktx)
+    
+    // Retrofit
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.gson)
+    implementation(libs.gson)
+    implementation(libs.okhttp)
+    implementation(libs.okhttp.logging)
+    
+    // Lifecycle
+    implementation(libs.androidx.lifecycle.runtime.ktx)
+    
+    // Glide
+    implementation(libs.glide)
 }
