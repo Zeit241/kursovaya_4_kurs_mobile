@@ -110,22 +110,8 @@ class ReviewsFragment : Fragment() {
 
 // Функция расширения для конвертации ReviewApi в Review
 private fun ReviewApi.toReview(): Review {
-    // Формируем имя автора из данных пациента
-    // В API ответе patient может не содержать user, поэтому используем "Анонимный пользователь"
-    // или можно попробовать получить из appointment.createdBy, но это требует изменения модели
-    val authorName = if (patient?.user != null) {
-        buildString {
-            append(patient.user.lastName)
-            if (patient.user.firstName.isNotEmpty()) {
-                append(" ${patient.user.firstName}")
-            }
-            if (patient.user.middleName.isNotEmpty()) {
-                append(" ${patient.user.middleName}")
-            }
-        }.trim().ifEmpty { patient.user.email }
-    } else {
-        "Анонимный пользователь"
-    }
+    // Используем готовое имя пациента из API, если оно есть
+    val authorName = patientName?.takeIf { it.isNotEmpty() } ?: "Анонимный пользователь"
     
     // Преобразуем дату в относительное время
     val relativeTime = try {
@@ -164,6 +150,7 @@ private fun ReviewApi.toReview(): Review {
     }
     
     return Review(
+        id = id.toInt(),
         authorName = authorName,
         rating = rating,
         relativeTimeDescription = relativeTime,

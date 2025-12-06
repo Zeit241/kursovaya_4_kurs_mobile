@@ -35,11 +35,5 @@
             android:layout_weight="1"
             android:textAppearance="?attr/textAppearanceTitleMedium"
             tools:text="Редактировать профиль" />
-
-        <ImageView
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:src="@drawable/ic_arrow_back"
-            app:tint="?android:attr/textColorSecondary" />
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

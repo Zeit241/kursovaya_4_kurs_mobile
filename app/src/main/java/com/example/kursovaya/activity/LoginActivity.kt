@@ -15,6 +15,8 @@ import com.example.kursovaya.R
 import com.example.kursovaya.model.AuthState
 import com.example.kursovaya.repository.AuthApiRepository
 import com.example.kursovaya.repository.AuthRepository
+import com.example.kursovaya.repository.UserDataRepository
+import com.example.kursovaya.repository.UserRepository
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.launch
 
@@ -61,13 +63,33 @@ class LoginActivity : AppCompatActivity() {
                         Log.d("LoginActivity", "Проверка токена: ${savedToken.javaClass.simpleName}")
                         
                         if (savedToken is AuthState.Authenticated) {
-                            Log.d("LoginActivity", "Токен подтвержден, переход в MainActivity")
-                            Toast.makeText(this@LoginActivity, "Успешный вход!", Toast.LENGTH_SHORT).show()
-
-                            val intent = Intent(this@LoginActivity, MainActivity::class.java)
-                            intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                            startActivity(intent)
-                            finish()
+                            Log.d("LoginActivity", "Токен подтвержден, загрузка данных пользователя...")
+                            
+                            // Инициализируем UserDataRepository
+                            UserDataRepository.init(this@LoginActivity)
+                            
+                            // Загружаем данные пользователя
+                            val userRepository = UserRepository(this@LoginActivity)
+                            userRepository.getCurrentUser()
+                                .onSuccess { user ->
+                                    Log.d("LoginActivity", "Данные пользователя загружены: ${user.email}")
+                                    Toast.makeText(this@LoginActivity, "Успешный вход!", Toast.LENGTH_SHORT).show()
+                                    
+                                    val intent = Intent(this@LoginActivity, MainActivity::class.java)
+                                    intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                    startActivity(intent)
+                                    finish()
+                                }
+                                .onFailure { error ->
+                                    Log.e("LoginActivity", "Ошибка загрузки данных пользователя", error)
+                                    // Все равно переходим в MainActivity, данные загрузятся там
+                                    Toast.makeText(this@LoginActivity, "Успешный вход!", Toast.LENGTH_SHORT).show()
+                                    
+                                    val intent = Intent(this@LoginActivity, MainActivity::class.java)
+                                    intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                    startActivity(intent)
+                                    finish()
+                                }
                         } else {
                             // Если токен не сохранился, показываем ошибку
                             Log.e("LoginActivity", "Токен не сохранился!")

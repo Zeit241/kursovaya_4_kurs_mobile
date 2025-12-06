@@ -18,12 +18,27 @@
             android:orientation="horizontal"
             android:gravity="center_vertical">
 
-            <ImageView
-                android:id="@+id/doctorImageView"
+            <FrameLayout
                 android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:scaleType="centerCrop"
-                tools:src="@tools:sample/avatars" />
+                android:layout_height="48dp">
+                
+                <ImageView
+                    android:id="@+id/doctorImageView"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:scaleType="centerCrop"
+                    android:background="@drawable/bg_doctor_placeholder"
+                    tools:src="@tools:sample/avatars" />
+                
+                <ImageView
+                    android:id="@+id/doctorPlaceholderIcon"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/ic_person_dark"
+                    android:visibility="gone"
+                    tools:visibility="visible" />
+            </FrameLayout>
 
             <LinearLayout
                 android:layout_width="0dp"
@@ -37,7 +52,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:textAppearance="?attr/textAppearanceHeadline6"
-                    tools:text="Dr. Sarah Johnson" />
+                    tools:text="Доктор Иванов" />
 
                 <TextView
                     android:id="@+id/doctorSpecialtyTextView"
@@ -45,14 +60,15 @@
                     android:layout_height="wrap_content"
                     android:textAppearance="?attr/textAppearanceBody2"
                     android:textColor="?android:attr/textColorSecondary"
-                    tools:text="Cardiologist" />
+                    tools:text="Кардиолог" />
             </LinearLayout>
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/statusChip"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                tools:text="Upcoming" />
+                android:visibility="gone"
+                tools:text="Предстоящие" />
 
         </LinearLayout>
 
@@ -84,7 +100,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Date:"
+                    android:text="Дата:"
                     android:layout_marginStart="8dp"
                     android:textColor="?android:attr/textColorSecondary"/>
 
@@ -113,7 +129,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Time:"
+                    android:text="Время:"
                     android:layout_marginStart="8dp"
                     android:textColor="?android:attr/textColorSecondary"/>
 
@@ -126,33 +142,6 @@
                     tools:text="10:00 AM" />
             </LinearLayout>
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical">
-
-                <ImageView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:src="@drawable/ic_location"
-                    app:tint="?attr/colorPrimary"/>
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Location:"
-                    android:layout_marginStart="8dp"
-                    android:textColor="?android:attr/textColorSecondary"/>
-
-                <TextView
-                    android:id="@+id/locationTextView"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="4dp"
-                    android:textStyle="bold"
-                    tools:text="Downtown Medical Center" />
-            </LinearLayout>
         </LinearLayout>
 
         <LinearLayout
@@ -169,16 +158,11 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Navigate" />
-
-            <Button
-                android:id="@+id/rescheduleButton"
-                style="?attr/materialButtonOutlinedStyle"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Reschedule"
-                android:layout_marginStart="8dp"/>
+                android:text="Маршрут"
+                android:drawableStart="@drawable/ic_navigate"
+                android:drawablePadding="8dp"
+                android:drawableTint="?attr/colorPrimary"
+                android:gravity="center" />
 
             <Button
                 android:id="@+id/cancelButton"
@@ -186,18 +170,26 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Cancel"
+                android:text="Отменить"
+                android:drawableStart="@drawable/ic_cancel"
+                android:drawablePadding="8dp"
+                android:drawableTint="?attr/colorPrimary"
+                android:gravity="center"
                 android:layout_marginStart="8dp"/>
 
         </LinearLayout>
 
         <Button
-            android:id="@+id/writeReviewButton"
+            android:id="@+id/repeatButton"
             style="?attr/materialButtonOutlinedStyle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:text="Write a Review"
+            android:text="Повторить"
+            android:drawableStart="@drawable/ic_repeat"
+            android:drawablePadding="8dp"
+            android:drawableTint="?attr/colorPrimary"
+            android:gravity="center"
             android:visibility="gone"/>
 
     </LinearLayout>

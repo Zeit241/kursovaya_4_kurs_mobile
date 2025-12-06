@@ -16,13 +16,24 @@ object RetrofitClient {
     private const val BASE_URL = "http://10.0.2.2:8085/" // Для эмулятора Android
     // Для реального устройства используйте: "http://YOUR_IP:8085/"
     
-    private var authRepository: AuthRepository? = null
+    private var context: Context? = null
     private var retrofitInstance: Retrofit? = null
     
     fun init(context: Context) {
-        authRepository = AuthRepository(context)
-        // Пересоздаем Retrofit при инициализации, чтобы interceptor получил актуальный authRepository
+        this.context = context.applicationContext
+        // Пересоздаем Retrofit при инициализации
         retrofitInstance = null
+    }
+    
+    // Получаем актуальный AuthRepository при каждом запросе
+    private fun getAuthRepository(): AuthRepository? {
+        val ctx = context
+        return if (ctx != null) {
+            AuthRepository(ctx)
+        } else {
+            Log.e("RetrofitClient", "Context is null! Нужно вызвать RetrofitClient.init(context)")
+            null
+        }
     }
     
     // Interceptor для добавления JWT токена в заголовки
@@ -30,8 +41,9 @@ object RetrofitClient {
         return Interceptor { chain ->
             val originalRequest = chain.request()
             
-            // Получаем токен каждый раз при запросе
-            val token = authRepository?.getAuthState()?.let { state ->
+            // Получаем актуальный authRepository при каждом запросе
+            val authRepo = getAuthRepository()
+            val token = authRepo?.getAuthState()?.let { state ->
                 if (state is AuthState.Authenticated) {
                     Log.d("RetrofitClient", "Токен найден: ${state.token.take(20)}...")
                     state.token
@@ -40,7 +52,7 @@ object RetrofitClient {
                     null
                 }
             } ?: run {
-                Log.w("RetrofitClient", "authRepository is null или токен не найден")
+                Log.e("RetrofitClient", "authRepository is null или токен не найден для ${originalRequest.url}")
                 null
             }
             
@@ -51,7 +63,7 @@ object RetrofitClient {
                 Log.d("RetrofitClient", "Добавлен заголовок Authorization для ${originalRequest.url}")
                 requestWithAuth
             } else {
-                Log.w("RetrofitClient", "Запрос без токена: ${originalRequest.url}")
+                Log.e("RetrofitClient", "Запрос без токена: ${originalRequest.url}")
                 originalRequest
             }
             
@@ -88,5 +100,17 @@ object RetrofitClient {
     
     val doctorsApi: DoctorsApi
         get() = retrofit.create(DoctorsApi::class.java)
+    
+    val userApi: UserApi
+        get() = retrofit.create(UserApi::class.java)
+    
+    val appointmentApi: AppointmentApi
+        get() = retrofit.create(AppointmentApi::class.java)
+    
+    val patientApi: PatientApi
+        get() = retrofit.create(PatientApi::class.java)
+    
+    val reviewApi: ReviewApi
+        get() = retrofit.create(ReviewApi::class.java)
 }
 

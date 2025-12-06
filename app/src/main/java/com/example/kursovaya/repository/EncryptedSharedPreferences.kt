@@ -37,5 +37,7 @@ class AuthRepository(context: Context) {
         sharedPreferences.edit()
             .remove("access_token")
             .apply()
+        // Очищаем данные пользователя при выходе
+        UserDataRepository.clearUser()
     }
 }

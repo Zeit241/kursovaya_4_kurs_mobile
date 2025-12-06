@@ -62,6 +62,7 @@ class DateAdapter(
         fun bind(date: DateItem) {
             binding.dayOfWeekTextView.text = date.dayOfWeek
             binding.dayOfMonthTextView.text = date.dayOfMonth
+            binding.monthTextView.text = date.month
             (binding.root as MaterialCardView).isChecked = date.isSelected
         }
     }

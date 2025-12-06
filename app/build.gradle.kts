@@ -57,17 +57,25 @@ dependencies {
 //    implementation("com.google.android.material:material:1.11.0")
     implementation(libs.androidx.navigation.fragment.ktx)
     implementation(libs.androidx.navigation.ui.ktx)
-    
+
     // Retrofit
     implementation(libs.retrofit)
     implementation(libs.retrofit.gson)
     implementation(libs.gson)
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging)
-    
+
     // Lifecycle
     implementation(libs.androidx.lifecycle.runtime.ktx)
-    
+
     // Glide
     implementation(libs.glide)
+
+    // STOMP WebSocket client
+    implementation("com.github.NaikSoftware:StompProtocolAndroid:1.6.6")
+    implementation("io.reactivex.rxjava2:rxjava:2.2.21")
+    implementation("io.reactivex.rxjava2:rxandroid:2.1.1")
+
+    // Input mask
+    implementation("com.redmadrobot:input-mask-android:7.2.4")
 }

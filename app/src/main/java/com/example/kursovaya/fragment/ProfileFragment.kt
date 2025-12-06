@@ -6,7 +6,6 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
@@ -18,6 +17,7 @@ import com.example.kursovaya.databinding.FragmentProfileBinding
 import com.example.kursovaya.model.MenuItem
 import com.example.kursovaya.repository.AuthRepository
 import com.example.kursovaya.repository.DoctorsRepository
+import com.example.kursovaya.repository.UserRepository
 import kotlinx.coroutines.launch
 
 class ProfileFragment : Fragment() {
@@ -26,6 +26,7 @@ class ProfileFragment : Fragment() {
     private val binding get() = _binding!!
     private lateinit var authRepository: AuthRepository
     private lateinit var doctorsRepository: DoctorsRepository
+    private lateinit var userRepository: UserRepository
     private lateinit var menuAdapter: MenuAdapter
 
     override fun onCreateView(
@@ -37,15 +38,12 @@ class ProfileFragment : Fragment() {
         com.example.kursovaya.api.RetrofitClient.init(requireContext())
         authRepository = AuthRepository(requireContext())
         doctorsRepository = DoctorsRepository(requireContext())
+        userRepository = UserRepository(requireContext())
         return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-
-        view.findViewById<Button>(R.id.appointmentHistoryButton).setOnClickListener {
-            findNavController().navigate(R.id.action_profileFragment_to_appointmentHistoryFragment)
-        }
 
         setupMenu()
         loadUserData()
@@ -56,19 +54,12 @@ class ProfileFragment : Fragment() {
         binding.menuRecyclerView.adapter = menuAdapter
 
         val menuItems = listOf(
-            MenuItem(
-                R.drawable.ic_person,
-                "Редактировать профиль"
-            ) { showToast("Edit Profile clicked") },
-            MenuItem(R.drawable.ic_calendar, "Мои записи") { 
-                findNavController().navigate(R.id.action_profileFragment_to_appointmentHistoryFragment)
+            MenuItem(R.drawable.ic_person_dark, "Редактировать профиль") {
+                findNavController().navigate(R.id.editProfileFragment)
             },
-            MenuItem(
-                R.drawable.ic_calendar,
-                "Уведомления",
-                badgeCount = 3
-            ) { showToast("Notifications clicked") },
-            MenuItem(R.drawable.ic_home, "Настройки") { showToast("Settings clicked") },
+            MenuItem(R.drawable.ic_calendar, "История посещений") {
+                findNavController().navigate(R.id.appointmentHistoryFragment)
+            },
             MenuItem(R.drawable.ic_arrow_back, "Выйти") {
                 // Логика выхода из аккаунта
                 authRepository.clearAuth()
@@ -81,31 +72,64 @@ class ProfileFragment : Fragment() {
     }
 
     private fun loadUserData() {
-        // Здесь должны быть данные реального пользователя
-        binding.userNameTextView.text = "John Smith"
-        binding.userEmailTextView.text = "john.smith@email.com"
-        binding.appointmentsCountTextView.text = "12"
-        // Установка изображения
-        binding.userImageView.setImageResource(R.drawable.placeholder_doctor)
-        
-        // Загружаем топ-10 врачей по рейтингу
-        loadTopDoctors()
+        // Получаем сохраненные данные пользователя
+        val user = com.example.kursovaya.repository.UserDataRepository.getCurrentUser()
+
+        if (user != null) {
+            displayUserData(user)
+        } else {
+            // Если данных нет, показываем плейсхолдер
+            binding.userNameTextView.text = "Пользователь"
+            binding.userEmailTextView.text = ""
+            binding.userImageView.setImageResource(R.drawable.ic_person)
+        }
+
+        // Загружаем статистику пользователя
+        loadUserStats()
     }
-    
-    private fun loadTopDoctors() {
+
+    private fun loadUserStats() {
         lifecycleScope.launch {
-            doctorsRepository.getTopDoctorsByRating(limit = 10)
-                .onSuccess { doctorsApi ->
-                    Log.d("ProfileFragment", "Loaded ${doctorsApi.size} top doctors")
-                    // Здесь можно отобразить топ врачей, если есть UI элемент
-                    // Например, в RecyclerView или другом виджете
+            userRepository.getUserStats()
+                .onSuccess { stats ->
+                    Log.d("ProfileFragment", "Статистика загружена: appointments=${stats.appointmentsCount}, reviews=${stats.reviewsCount}, queues=${stats.queueEntriesCount}")
+                    binding.appointmentsCountTextView.text = stats.appointmentsCount.toString()
+                    binding.reviewsCountTextView.text = stats.reviewsCount.toString()
+                    binding.queueCountTextView.text = stats.queueEntriesCount.toString()
                 }
                 .onFailure { error ->
-                    Log.e("ProfileFragment", "Error loading top doctors", error)
+                    Log.e("ProfileFragment", "Ошибка загрузки статистики", error)
+                    // Устанавливаем значения по умолчанию при ошибке
+                    binding.appointmentsCountTextView.text = "0"
+                    binding.reviewsCountTextView.text = "0"
+                    binding.queueCountTextView.text = "0"
                 }
         }
     }
 
+    private fun displayUserData(user: com.example.kursovaya.model.api.User) {
+        // Формируем полное имя: фамилия + имя + отчество
+        val fullName = buildString {
+            if (user.lastName.isNotEmpty()) {
+                append(user.lastName)
+            }
+            if (user.firstName.isNotEmpty()) {
+                if (isNotEmpty()) append(" ")
+                append(user.firstName)
+            }
+            if (!user.middleName.isNullOrEmpty()) {
+                if (isNotEmpty()) append(" ")
+                append(user.middleName)
+            }
+        }.ifEmpty { user.email }
+
+        binding.userNameTextView.text = fullName
+        binding.userEmailTextView.text = user.email
+        binding.userImageView.setImageResource(R.drawable.ic_person)
+
+        Log.d("ProfileFragment", "Отображены данные пользователя: $fullName, ${user.email}")
+    }
+    
     private fun showToast(message: String) {
         Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
     }

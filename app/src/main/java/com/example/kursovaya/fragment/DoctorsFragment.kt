@@ -19,6 +19,7 @@ import com.example.kursovaya.databinding.FragmentDoctorsBinding
 import com.example.kursovaya.model.Doctor
 import com.example.kursovaya.model.api.DoctorApi
 import com.example.kursovaya.model.api.Specialization
+import com.example.kursovaya.model.api.toImageDataUri
 import com.example.kursovaya.repository.DoctorsRepository
 import com.google.android.material.chip.Chip
 import com.google.android.material.snackbar.Snackbar
@@ -64,8 +65,11 @@ class DoctorsFragment : Fragment() {
                 )
             },
             onBookClicked = { doctor ->
-                // TODO: Navigate to booking
-                Log.d("DoctorsFragment", "Book clicked: ${doctor.name}")
+                val bundle = bundleOf("DOCTOR_ID" to doctor.id)
+                findNavController().navigate(
+                    R.id.action_doctorsFragment_to_bookingFragment,
+                    bundle
+                )
             }
         )
 
@@ -277,7 +281,7 @@ private fun DoctorApi.toDoctor(): Doctor {
         if (user.firstName.isNotEmpty()) {
             append(" ${user.firstName}")
         }
-        if (user.middleName.isNotEmpty()) {
+        if (user.middleName?.isNotEmpty() == true) {
             append(" ${user.middleName}")
         }
     }.trim()
@@ -298,7 +302,7 @@ private fun DoctorApi.toDoctor(): Doctor {
         experience = "$experienceYears лет",
         location = "",
         availability = "",
-        image = photoUrl ?: "",
+        image = photoUrl.toImageDataUri(),
         consultationFee = ""
     )
 }

@@ -20,7 +20,13 @@
         android:id="@+id/nav_map"
         android:name="com.example.kursovaya.fragment.MapFragment"
         android:label="fragment_map"
-        tools:layout="@layout/fragment_map" />
+        tools:layout="@layout/fragment_map">
+        <argument
+            android:name="roomId"
+            app:argType="string"
+            app:nullable="true"
+            android:defaultValue="@null" />
+    </fragment>
 
     <navigation
         android:id="@+id/nav_doctors"
@@ -80,11 +86,7 @@
     <fragment
         android:id="@+id/nav_profile"
         android:name="com.example.kursovaya.fragment.ProfileFragment"
-        android:label="fragment_profile">
-        <action
-            android:id="@+id/action_profileFragment_to_appointmentHistoryFragment"
-            app:destination="@id/appointmentHistoryFragment" />
-    </fragment>
+        android:label="fragment_profile" />
 
     <fragment
         android:id="@+id/appointmentHistoryFragment"
@@ -105,5 +107,11 @@
             android:name="appointment"
             app:argType="com.example.kursovaya.model.Appointment" />
     </fragment>
+
+    <fragment
+        android:id="@+id/editProfileFragment"
+        android:name="com.example.kursovaya.fragment.EditProfileFragment"
+        android:label="Редактировать профиль"
+        tools:layout="@layout/fragment_edit_profile" />
 
 </navigation>

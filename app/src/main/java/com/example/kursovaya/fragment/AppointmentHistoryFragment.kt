@@ -1,29 +1,37 @@
 package com.example.kursovaya.fragment
 
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
 import android.widget.LinearLayout
+import android.widget.Toast
 import androidx.appcompat.widget.Toolbar
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.RecyclerView
 import com.example.kursovaya.R
 import com.example.kursovaya.adapter.AppointmentAdapter
 import com.example.kursovaya.model.Appointment
 import com.example.kursovaya.model.AppointmentStatus
+import com.example.kursovaya.repository.AppointmentRepository
+import com.example.kursovaya.repository.UserDataRepository
 import com.google.android.material.tabs.TabLayout
-import java.util.*
+import kotlinx.coroutines.launch
 
 class AppointmentHistoryFragment : Fragment() {
 
     private lateinit var tabLayout: TabLayout
     private lateinit var appointmentsRecyclerView: RecyclerView
     private lateinit var emptyStateLayout: LinearLayout
+    private lateinit var bookAppointmentButton: Button
 
     private lateinit var appointmentAdapter: AppointmentAdapter
-    private val allAppointments = getDummyAppointments()
+    private lateinit var appointmentRepository: AppointmentRepository
+    private var allAppointments: List<Appointment> = emptyList()
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -35,6 +43,8 @@ class AppointmentHistoryFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        appointmentRepository = AppointmentRepository(requireContext())
+
         val toolbar: Toolbar = view.findViewById(R.id.toolbar)
         toolbar.setNavigationOnClickListener {
             findNavController().navigateUp()
@@ -43,18 +53,18 @@ class AppointmentHistoryFragment : Fragment() {
         tabLayout = view.findViewById(R.id.tabLayout)
         appointmentsRecyclerView = view.findViewById(R.id.appointmentsRecyclerView)
         emptyStateLayout = view.findViewById(R.id.emptyStateLayout)
+        bookAppointmentButton = view.findViewById(R.id.bookAppointmentButton)
 
         setupTabs()
         setupRecyclerView()
-
-        filterAppointments("All")
+        loadAppointments()
     }
 
     private fun setupTabs() {
-        tabLayout.addTab(tabLayout.newTab().setText("All"))
-        tabLayout.addTab(tabLayout.newTab().setText("Upcoming"))
-        tabLayout.addTab(tabLayout.newTab().setText("Completed"))
-        tabLayout.addTab(tabLayout.newTab().setText("Cancelled"))
+        tabLayout.addTab(tabLayout.newTab().setText("Все"))
+        tabLayout.addTab(tabLayout.newTab().setText("Предстоящие"))
+        tabLayout.addTab(tabLayout.newTab().setText("Завершены"))
+        tabLayout.addTab(tabLayout.newTab().setText("Отмененные"))
 
         tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab?) {
@@ -68,22 +78,75 @@ class AppointmentHistoryFragment : Fragment() {
     }
 
     private fun setupRecyclerView() {
-        appointmentAdapter = AppointmentAdapter(emptyList()) { appointment ->
-            val action = AppointmentHistoryFragmentDirections.actionAppointmentHistoryFragmentToAppointmentDetailsFragment(appointment)
-            findNavController().navigate(action)
-        }
+        appointmentAdapter = AppointmentAdapter(
+            appointments = emptyList(),
+            onAppointmentClick = { appointment ->
+                val action = AppointmentHistoryFragmentDirections.actionAppointmentHistoryFragmentToAppointmentDetailsFragment(appointment)
+                findNavController().navigate(action)
+            },
+            onNavigateClick = { appointment ->
+                navigateToRoom(appointment)
+            }
+        )
         appointmentsRecyclerView.adapter = appointmentAdapter
+    }
+    
+    private fun navigateToRoom(appointment: Appointment) {
+        Log.d("AppointmentHistory", "=== Навигация на карту ===")
+        Log.d("AppointmentHistory", "ID записи: ${appointment.id}")
+        Log.d("AppointmentHistory", "Врач: ${appointment.doctorName}")
+        Log.d("AppointmentHistory", "Специальность: ${appointment.specialty}")
+        Log.d("AppointmentHistory", "Код кабинета (roomCode): ${appointment.roomCode}")
+        Log.d("AppointmentHistory", "Название кабинета (roomName): ${appointment.roomName}")
+        Log.d("AppointmentHistory", "Дата: ${appointment.date}")
+        Log.d("AppointmentHistory", "Время: ${appointment.time}")
+        Log.d("AppointmentHistory", "==========================")
+        
+        val bundle = Bundle().apply {
+            putString("roomId", appointment.roomCode)
+        }
+        findNavController().navigate(R.id.nav_map, bundle)
+    }
+
+    private fun loadAppointments() {
+        val user = UserDataRepository.getCurrentUser()
+        val patientId = user?.patientId
+
+        if (patientId == null) {
+            Toast.makeText(requireContext(), "Ошибка: не найден ID пациента", Toast.LENGTH_SHORT).show()
+            showEmptyState()
+            return
+        }
+
+        lifecycleScope.launch {
+            try {
+                val result = appointmentRepository.getAppointmentsForPatient(patientId)
+                if (result.isSuccess) {
+                    allAppointments = result.getOrNull() ?: emptyList()
+                    filterAppointments("Все")
+                } else {
+                    val error = result.exceptionOrNull()?.message ?: "Неизвестная ошибка"
+                    Toast.makeText(requireContext(), "Ошибка загрузки записей: $error", Toast.LENGTH_SHORT).show()
+                    showEmptyState()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(requireContext(), "Ошибка: ${e.message}", Toast.LENGTH_SHORT).show()
+                showEmptyState()
+            }
+        }
     }
 
     private fun filterAppointments(status: String) {
         val filteredList = when (status) {
-            "Upcoming" -> allAppointments.filter { it.status == AppointmentStatus.UPCOMING }
-            "Completed" -> allAppointments.filter { it.status == AppointmentStatus.COMPLETED }
-            "Cancelled" -> allAppointments.filter { it.status == AppointmentStatus.CANCELLED }
+            "Предстоящие" -> allAppointments.filter { it.status == AppointmentStatus.UPCOMING }
+            "Завершены" -> allAppointments.filter { it.status == AppointmentStatus.COMPLETED }
+            "Отмененные" -> allAppointments.filter { it.status == AppointmentStatus.CANCELLED }
             else -> allAppointments
         }
 
-        appointmentAdapter.updateAppointments(filteredList)
+        // Показывать статус только на вкладке "Все"
+        val showStatus = status == "Все"
+        appointmentAdapter.updateAppointments(filteredList, showStatus)
 
         if (filteredList.isEmpty()) {
             appointmentsRecyclerView.visibility = View.GONE
@@ -94,13 +157,8 @@ class AppointmentHistoryFragment : Fragment() {
         }
     }
 
-    private fun getDummyAppointments(): List<Appointment> {
-        return listOf(
-            Appointment("1", "1", "Dr. Sarah Johnson", "Cardiologist", Date(), "10:00 AM", "Downtown Medical Center", "203", 2, AppointmentStatus.UPCOMING, "", "$150", "+1 (555) 123-4567", "s.johnson@clinic.com", "Please arrive 15 minutes early for check-in. Bring your insurance card and ID.", "Chest pain, shortness of breath"),
-            Appointment("2", "2", "Dr. Michael Chen", "Neurologist", Date(), "2:30 PM", "City Hospital", "301", 3, AppointmentStatus.UPCOMING, "", "$180", "+1 (555) 765-4321", "m.chen@clinic.com", "", "Headaches, dizziness"),
-            Appointment("3", "3", "Dr. Emily Rodriguez", "Pediatrician", Date(), "11:00 AM", "Children's Clinic", "105", 1, AppointmentStatus.COMPLETED, "", "$120", "+1 (555) 234-5678", "e.rodriguez@clinic.com", "Routine checkup completed successfully.", "Annual checkup", "Healthy development, all vitals normal", "Multivitamin supplements recommended"),
-            Appointment("4", "4", "Dr. James Wilson", "Orthopedist", Date(), "3:00 PM", "Sports Medicine Center", "410", 4, AppointmentStatus.COMPLETED, "", "$160", "+1 (555) 876-5432", "j.wilson@clinic.com", "", "Knee pain"),
-            Appointment("5", "5", "Dr. Lisa Anderson", "Dermatologist", Date(), "9:30 AM", "Skin Care Clinic", "112", 1, AppointmentStatus.CANCELLED, "", "$140", "+1 (555) 345-6789", "l.anderson@clinic.com", "", "Skin rash"),
-        )
+    private fun showEmptyState() {
+        appointmentsRecyclerView.visibility = View.GONE
+        emptyStateLayout.visibility = View.VISIBLE
     }
 }

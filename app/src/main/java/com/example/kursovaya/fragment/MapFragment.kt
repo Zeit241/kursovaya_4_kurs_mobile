@@ -46,6 +46,9 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private var lastSelectedEnd: Feature? = null
 
     private var routeAnimator: ValueAnimator? = null
+    
+    // ID кабинета для автоматического построения маршрута
+    private var targetRoomId: String? = null
 
     private val displayablePoints: List<Feature>
         get() = pointsFeatures.filter { f ->
@@ -59,6 +62,15 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         super.onCreate(savedInstanceState)
         // Инициализация совместимого класса Mapbox (MapLibre v9)
         Mapbox.getInstance(requireContext().applicationContext)
+        
+        // Получаем roomId из аргументов для автоматической навигации
+        targetRoomId = arguments?.getString("roomId")
+        
+        if (targetRoomId != null) {
+            android.util.Log.d("MapFragment", "=== Получен roomId для навигации ===")
+            android.util.Log.d("MapFragment", "roomId: $targetRoomId")
+            android.util.Log.d("MapFragment", "====================================")
+        }
     }
 
     override fun onMapReady(mapboxMap: MapboxMap) {
@@ -69,6 +81,11 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             ensureRouteLayer(style)
             initUiFromData()
             wireUi()
+            
+            // Автоматически строим маршрут если передан roomId
+            targetRoomId?.let { roomId ->
+                buildRouteToRoom(roomId)
+            }
         }
     }
 
@@ -308,6 +325,60 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             binding.startSelect.setSelection(0)
             binding.endSelect.setSelection(points.size - 1)
             updateSelectedPoints(points[0], points[points.size - 1])
+        }
+    }
+
+    /**
+     * Автоматически строит маршрут от регистратуры до кабинета с указанным roomId
+     */
+    private fun buildRouteToRoom(roomId: String) {
+        android.util.Log.d("MapFragment", "buildRouteToRoom: начинаем построение маршрута до кабинета $roomId")
+        
+        val points = displayablePoints
+        android.util.Log.d("MapFragment", "Доступные точки: ${points.size}")
+        
+        // Найти регистратуру (room = "1" или name содержит "Регистратура")
+        val registrationPoint = points.find { f ->
+            val props = f.properties()
+            props?.get("room")?.asString == "1" || 
+                props?.get("name")?.asString?.contains("Регистратура", ignoreCase = true) == true
+        }
+        
+        // Найти кабинет с нужным roomId
+        val targetRoom = points.find { f ->
+            f.properties()?.get("room")?.asString == roomId
+        }
+        
+        android.util.Log.d("MapFragment", "Регистратура найдена: ${registrationPoint != null}")
+        android.util.Log.d("MapFragment", "Целевой кабинет найден: ${targetRoom != null}")
+        
+        if (registrationPoint == null || targetRoom == null) {
+            android.util.Log.w("MapFragment", "Не удалось найти точки для маршрута")
+            binding.info.text = "Не удалось найти маршрут"
+            return
+        }
+        
+        val targetName = targetRoom.properties()?.get("name")?.asString ?: "Кабинет $roomId"
+        android.util.Log.d("MapFragment", "Строим маршрут: Регистратура -> $targetName")
+        
+        // Найти индексы для установки в спиннеры
+        val startIndex = points.indexOf(registrationPoint)
+        val endIndex = points.indexOf(targetRoom)
+        
+        if (startIndex >= 0 && endIndex >= 0 && startIndex != endIndex) {
+            // Устанавливаем выбор в спиннерах
+            binding.startSelect.setSelection(startIndex)
+            binding.endSelect.setSelection(endIndex)
+            
+            // Задержка 3 секунды перед построением маршрута
+            binding.root.postDelayed({
+                android.util.Log.d("MapFragment", "Строим маршрут (после задержки 3 сек)")
+                updateSelectedPoints(registrationPoint, targetRoom)
+                computeAndRenderRoute(registrationPoint, targetRoom)
+                android.util.Log.d("MapFragment", "Маршрут успешно построен")
+            }, 1250)
+        } else {
+            android.util.Log.w("MapFragment", "Ошибка индексов: startIndex=$startIndex, endIndex=$endIndex")
         }
     }
 

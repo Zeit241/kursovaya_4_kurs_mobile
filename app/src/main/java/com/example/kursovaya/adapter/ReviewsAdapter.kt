@@ -33,8 +33,13 @@ class ReviewsAdapter : ListAdapter<Review, ReviewsAdapter.ReviewViewHolder>(Revi
 
 class ReviewDiffCallback : DiffUtil.ItemCallback<Review>() {
     override fun areItemsTheSame(oldItem: Review, newItem: Review): Boolean {
-        // В реальном приложении здесь должен быть уникальный ID отзыва
-        return oldItem.authorName == newItem.authorName && oldItem.relativeTimeDescription == newItem.relativeTimeDescription
+        // Используем уникальный ID отзыва, если он есть
+        return if (oldItem.id != null && newItem.id != null) {
+            oldItem.id == newItem.id
+        } else {
+            // Fallback на комбинацию имени и даты, если ID нет
+            oldItem.authorName == newItem.authorName && oldItem.relativeTimeDescription == newItem.relativeTimeDescription
+        }
     }
 
     override fun areContentsTheSame(oldItem: Review, newItem: Review): Boolean {

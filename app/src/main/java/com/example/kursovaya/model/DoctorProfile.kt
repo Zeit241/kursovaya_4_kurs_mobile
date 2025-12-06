@@ -18,6 +18,7 @@ data class DoctorProfile(
 )
 
 data class Review(
+    val id: Int? = null,
     val authorName: String,
     val rating: Int,
     val relativeTimeDescription: String,

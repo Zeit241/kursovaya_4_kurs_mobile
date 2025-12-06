@@ -62,6 +62,9 @@ class TimeAdapter(
         fun bind(time: TimeItem) {
             binding.timeTextView.text = time.time
             (binding.root as MaterialCardView).isChecked = time.isSelected
+            // Делаем занятые слоты неактивными
+            binding.root.isEnabled = !time.isBooked
+            binding.root.alpha = if (time.isBooked) 0.5f else 1.0f
         }
     }
 }

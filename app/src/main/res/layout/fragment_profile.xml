@@ -56,7 +56,7 @@
                         android:layout_marginBottom="16dp"
                         android:scaleType="centerCrop"
                         app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full"
-                        tools:src="@drawable/bg_circle" />
+                        tools:src="@drawable/ic_person" />
 
                     <TextView
                         android:id="@+id/userNameTextView"
@@ -70,25 +70,10 @@
                         android:id="@+id/userEmailTextView"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginBottom="16dp"
                         android:textColor="?android:attr/textColorSecondary"
                         tools:text="john.smith@email.com" />
-
-                    <Button
-                        android:id="@+id/editProfileButton"
-                        style="?attr/materialButtonOutlinedStyle"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Редактировать профиль" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
-
-            <Button
-                android:id="@+id/appointmentHistoryButton"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="История посещений"
-                android:layout_marginBottom="16dp"/>
 
             <!-- Карточки со статистикой -->
             <LinearLayout

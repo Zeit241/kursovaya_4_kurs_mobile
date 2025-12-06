@@ -17,6 +17,7 @@ import com.example.kursovaya.api.RetrofitClient
 import com.example.kursovaya.databinding.FragmentDoctorProfileBinding
 import com.example.kursovaya.model.DoctorProfile
 import com.example.kursovaya.model.api.DoctorApi
+import com.example.kursovaya.model.api.toImageDataUri
 import com.example.kursovaya.repository.DoctorsRepository
 import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.tabs.TabLayoutMediator
@@ -71,7 +72,7 @@ class DoctorProfileFragment : Fragment() {
             if (user.firstName.isNotEmpty()) {
                 append(" ${user.firstName}")
             }
-            if (user.middleName.isNotEmpty()) {
+            if (user.middleName?.isNotEmpty() == true) {
                 append(" ${user.middleName}")
             }
         }.trim()
@@ -91,7 +92,7 @@ class DoctorProfileFragment : Fragment() {
             experience = "$experienceYears лет",
             location = "",
             availability = "",
-            image = photoUrl ?: "",
+            image = photoUrl.toImageDataUri(),
             consultationFee = "",
             about = bio ?: "",
             education = emptyList(),
