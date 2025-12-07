@@ -28,3 +28,6 @@ fun String?.toImageDataUri(): String {
     return "data:image/jpeg;base64,$this"
 }
 
+
+
+

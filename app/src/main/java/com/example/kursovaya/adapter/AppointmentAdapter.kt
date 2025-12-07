@@ -19,7 +19,9 @@ import java.util.*
 class AppointmentAdapter(
     private var appointments: List<Appointment>,
     private val onAppointmentClick: (Appointment) -> Unit,
-    private val onNavigateClick: ((Appointment) -> Unit)? = null
+    private val onNavigateClick: ((Appointment) -> Unit)? = null,
+    private val onCancelClick: ((Appointment) -> Unit)? = null,
+    private val onRepeatClick: ((Appointment) -> Unit)? = null
 ) : RecyclerView.Adapter<AppointmentAdapter.AppointmentViewHolder>() {
 
     private var showStatus: Boolean = false
@@ -52,6 +54,7 @@ class AppointmentAdapter(
         private val upcomingButtonsLayout: LinearLayout = itemView.findViewById(R.id.upcomingButtonsLayout)
         private val repeatButton: Button = itemView.findViewById(R.id.repeatButton)
         private val navigateButton: Button = itemView.findViewById(R.id.navigateButton)
+        private val cancelButton: Button = itemView.findViewById(R.id.cancelButton)
 
         fun bind(appointment: Appointment, showStatus: Boolean) {
             itemView.setOnClickListener { onAppointmentClick(appointment) }
@@ -59,6 +62,16 @@ class AppointmentAdapter(
             // Обработчик кнопки навигации
             navigateButton.setOnClickListener { 
                 onNavigateClick?.invoke(appointment)
+            }
+            
+            // Обработчик кнопки отмены
+            cancelButton.setOnClickListener {
+                onCancelClick?.invoke(appointment)
+            }
+            
+            // Обработчик кнопки повторить
+            repeatButton.setOnClickListener {
+                onRepeatClick?.invoke(appointment)
             }
 
             // Bind data to views

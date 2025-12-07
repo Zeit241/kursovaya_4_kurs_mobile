@@ -12,7 +12,9 @@ import android.view.ViewGroup
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.example.kursovaya.R
 import com.example.kursovaya.databinding.FragmentQueueBinding
 import com.example.kursovaya.model.QueueItem
 import com.example.kursovaya.model.websocket.QueueEntry
@@ -192,8 +194,8 @@ class QueueFragment : Fragment() {
 
     private fun setupEmptyStateButton() {
         binding.bookAppointmentButton.setOnClickListener {
-            // TODO: Navigate to booking screen
-            // findNavController().navigate(R.id.action_queueFragment_to_bookingFragment)
+            // Переход на страницу с докторами при пустой очереди
+            findNavController().navigate(R.id.nav_doctors)
         }
     }
 

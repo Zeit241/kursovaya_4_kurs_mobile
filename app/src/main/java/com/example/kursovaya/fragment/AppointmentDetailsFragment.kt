@@ -23,8 +23,11 @@ import com.bumptech.glide.Glide
 import com.example.kursovaya.R
 import com.example.kursovaya.model.Appointment
 import com.example.kursovaya.model.AppointmentStatus
+import com.example.kursovaya.repository.AppointmentRepository
 import com.example.kursovaya.repository.ReviewRepository
 import com.example.kursovaya.repository.UserDataRepository
+import com.google.android.material.chip.Chip
+import com.google.android.material.chip.ChipGroup
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
@@ -206,6 +209,12 @@ class AppointmentDetailsFragment : Fragment() {
         val navigateButton: MaterialButton = view.findViewById(R.id.navigateButton)
         navigateButton.setOnClickListener {
             navigateToRoom(appointment)
+        }
+
+        // Кнопка отмены записи
+        val cancelButton: MaterialButton = view.findViewById(R.id.cancelButton)
+        cancelButton.setOnClickListener {
+            showCancelDrawer(appointment)
         }
 
         rateAndReviewButton.setOnClickListener {
@@ -429,6 +438,81 @@ class AppointmentDetailsFragment : Fragment() {
                     submitButton.isEnabled = true
                     progressBar.visibility = View.GONE
                 }
+            }
+        }
+
+        bottomSheetDialog.show()
+    }
+
+    private fun showCancelDrawer(appointment: Appointment) {
+        val bottomSheetDialog = BottomSheetDialog(requireContext())
+        val view = layoutInflater.inflate(R.layout.drawer_cancel_appointment, null)
+        bottomSheetDialog.setContentView(view)
+
+        val chipGroupReasons: ChipGroup = view.findViewById(R.id.chipGroupReasons)
+        val reasonEditText: TextInputEditText = view.findViewById(R.id.reasonEditText)
+        val cancelDialogButton: MaterialButton = view.findViewById(R.id.cancelDialogButton)
+        val confirmCancelButton: MaterialButton = view.findViewById(R.id.confirmCancelButton)
+        val progressBar: ProgressBar = view.findViewById(R.id.progressBar)
+
+        var selectedReason: String? = null
+
+        // Обработка выбора чипа
+        chipGroupReasons.setOnCheckedStateChangeListener { group, checkedIds ->
+            if (checkedIds.isNotEmpty()) {
+                val checkedChip = group.findViewById<Chip>(checkedIds[0])
+                selectedReason = checkedChip?.text?.toString()
+                // Очищаем текстовое поле при выборе готовой причины
+                reasonEditText.setText("")
+            } else {
+                selectedReason = null
+            }
+        }
+
+        // Закрыть drawer
+        cancelDialogButton.setOnClickListener {
+            bottomSheetDialog.dismiss()
+        }
+
+        // Подтвердить отмену
+        confirmCancelButton.setOnClickListener {
+            val customReason = reasonEditText.text.toString().trim()
+            val finalReason = when {
+                customReason.isNotEmpty() -> customReason
+                selectedReason != null -> selectedReason
+                else -> null
+            }
+
+            // Disable buttons and show progress
+            confirmCancelButton.isEnabled = false
+            cancelDialogButton.isEnabled = false
+            progressBar.visibility = View.VISIBLE
+
+            val appointmentRepository = AppointmentRepository(requireContext())
+            val appointmentId = appointment.id.toLongOrNull() ?: 0L
+
+            lifecycleScope.launch {
+                appointmentRepository.cancelAppointment(appointmentId, finalReason)
+                    .onSuccess {
+                        Toast.makeText(
+                            requireContext(),
+                            "Запись успешно отменена",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        bottomSheetDialog.dismiss()
+                        findNavController().navigateUp()
+                    }
+                    .onFailure { error ->
+                        Log.e("AppointmentDetailsFragment", "Ошибка отмены записи", error)
+                        Toast.makeText(
+                            requireContext(),
+                            "Ошибка отмены записи: ${error.message}",
+                            Toast.LENGTH_LONG
+                        ).show()
+                        confirmCancelButton.isEnabled = true
+                        cancelDialogButton.isEnabled = true
+                        progressBar.visibility = View.GONE
+                    }
             }
         }
 

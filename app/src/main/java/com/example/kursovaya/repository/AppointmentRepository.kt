@@ -6,6 +6,7 @@ import com.example.kursovaya.api.RetrofitClient
 import com.example.kursovaya.model.Appointment
 import com.example.kursovaya.model.api.AppointmentApi
 import com.example.kursovaya.model.api.BookAppointmentRequest
+import com.example.kursovaya.model.api.CancelAppointmentRequest
 import com.example.kursovaya.model.api.DoctorApi
 import com.example.kursovaya.model.api.toAppointment
 
@@ -99,7 +100,16 @@ class AppointmentRepository(context: Context) {
                 val doctorResult = getDoctorById(appointmentApi.doctorId.toLong())
                 if (doctorResult.isSuccess) {
                     val doctor = doctorResult.getOrNull()!!
-                    val doctorName = "${doctor.user.firstName} ${doctor.user.lastName}".trim()
+                    // Формируем полное ФИО: Фамилия Имя Отчество
+                    val doctorName = buildString {
+                        append(doctor.user.lastName)
+                        if (doctor.user.firstName.isNotEmpty()) {
+                            append(" ${doctor.user.firstName}")
+                        }
+                        if (!doctor.user.middleName.isNullOrEmpty()) {
+                            append(" ${doctor.user.middleName}")
+                        }
+                    }.trim().ifEmpty { doctor.user.email }
                     val specialty = doctor.specializations?.firstOrNull()?.name ?: "Врач"
                     
                     val appointment = appointmentApi.toAppointment(
@@ -146,7 +156,16 @@ class AppointmentRepository(context: Context) {
             }
             
             val doctor = doctorResult.getOrNull()!!
-            val doctorName = "${doctor.user.firstName} ${doctor.user.lastName}".trim()
+            // Формируем полное ФИО: Фамилия Имя Отчество
+            val doctorName = buildString {
+                append(doctor.user.lastName)
+                if (doctor.user.firstName.isNotEmpty()) {
+                    append(" ${doctor.user.firstName}")
+                }
+                if (!doctor.user.middleName.isNullOrEmpty()) {
+                    append(" ${doctor.user.middleName}")
+                }
+            }.trim().ifEmpty { doctor.user.email }
             val specialty = doctor.specializations?.firstOrNull()?.name ?: "Врач"
             
             val appointment = appointmentApi.toAppointment(
@@ -233,6 +252,40 @@ class AppointmentRepository(context: Context) {
             }
         } catch (e: Exception) {
             Log.e("AppointmentRepository", "Исключение при бронировании записи", e)
+            Result.failure(e)
+        }
+    }
+    
+    /**
+     * Отменяет запись на приём
+     */
+    suspend fun cancelAppointment(appointmentId: Long, cancelReason: String?): Result<AppointmentApi> {
+        return try {
+            Log.d("AppointmentRepository", "Отмена записи $appointmentId...")
+            val request = if (cancelReason.isNullOrBlank()) null else CancelAppointmentRequest(cancelReason)
+            val response = appointmentApi.cancelAppointment(appointmentId, request)
+            
+            Log.d("AppointmentRepository", "Response code: ${response.code()}")
+            Log.d("AppointmentRepository", "Response isSuccessful: ${response.isSuccessful}")
+            
+            if (response.isSuccessful) {
+                val appointment = response.body()
+                if (appointment != null) {
+                    Log.d("AppointmentRepository", "Запись успешно отменена")
+                    Result.success(appointment)
+                } else {
+                    Log.e("AppointmentRepository", "Пустой ответ от сервера")
+                    Result.failure(Exception("Пустой ответ от сервера"))
+                }
+            } else {
+                val errorBody = response.errorBody()?.string()
+                Log.e("AppointmentRepository", "Error body: $errorBody")
+                val errorMessage = errorBody ?: "Ошибка отмены записи: ${response.code()}"
+                Log.e("AppointmentRepository", errorMessage)
+                Result.failure(Exception(errorMessage))
+            }
+        } catch (e: Exception) {
+            Log.e("AppointmentRepository", "Исключение при отмене записи", e)
             Result.failure(e)
         }
     }

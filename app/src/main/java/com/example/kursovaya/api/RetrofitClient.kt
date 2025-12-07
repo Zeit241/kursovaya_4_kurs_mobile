@@ -112,5 +112,8 @@ object RetrofitClient {
     
     val reviewApi: ReviewApi
         get() = retrofit.create(ReviewApi::class.java)
+    
+    val dashboardApi: DashboardApi
+        get() = retrofit.create(DashboardApi::class.java)
 }
 

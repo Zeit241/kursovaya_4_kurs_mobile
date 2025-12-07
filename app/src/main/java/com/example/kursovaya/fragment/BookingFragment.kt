@@ -26,6 +26,8 @@ import com.example.kursovaya.repository.DoctorsRepository
 import com.example.kursovaya.repository.UserDataRepository
 import kotlinx.coroutines.launch
 import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
@@ -230,19 +232,36 @@ class BookingFragment : Fragment() {
                     .onSuccess { appointments ->
                         if (_binding == null) return@launch
 
+                        val today = LocalDate.now()
+                        val selectedLocalDate = LocalDate.parse(date)
+                        val currentTime = LocalTime.now()
+
                         val timeItems = appointments.map { appointment ->
                             // Парсим время из startTime (формат: "2024-01-15T08:00:00Z")
                             val timeStr = parseTimeFromISO(appointment.startTime)
                             // Считаем слот занятым, если isBooked == true или patientId != null
                             val isBooked =
                                 appointment.isBooked == true || appointment.patientId != null
+                            
+                            // Проверяем, прошёл ли слот (для сегодняшней даты)
+                            val isPast = if (selectedLocalDate == today) {
+                                try {
+                                    val slotTime = LocalTime.parse(timeStr)
+                                    slotTime.isBefore(currentTime) || slotTime == currentTime
+                                } catch (e: Exception) {
+                                    false
+                                }
+                            } else {
+                                false
+                            }
+                            
                             TimeItem(
                                 time = timeStr,
                                 appointmentId = appointment.id,
-                                isBooked = isBooked,
+                                isBooked = isBooked || isPast, // Прошедшие слоты считаем занятыми
                                 isSelected = false
                             )
-                        }.filter { !it.isBooked } // Показываем только свободные слоты
+                        }.filter { !it.isBooked } // Показываем только свободные слоты (не занятые и не прошедшие)
 
                         if (timeItems.isEmpty()) {
                             // Показываем заглушку, если нет свободных слотов
@@ -301,8 +320,28 @@ class BookingFragment : Fragment() {
     }
 
     private fun updateConfirmButtonState() {
-        val isEnabled = selectedDate != null && selectedTime != null && !selectedTime!!.isBooked
+        val isEnabled = selectedDate != null && selectedTime != null && !selectedTime!!.isBooked && isSelectedTimeValid()
         binding.confirmBookingButton.isEnabled = isEnabled
+    }
+
+    /**
+     * Проверяет, что выбранные дата и время не в прошлом
+     */
+    private fun isSelectedTimeValid(): Boolean {
+        val date = selectedDate ?: return false
+        val time = selectedTime ?: return false
+
+        return try {
+            val selectedLocalDate = LocalDate.parse(date.dateString)
+            val selectedLocalTime = LocalTime.parse(time.time)
+            val selectedDateTime = LocalDateTime.of(selectedLocalDate, selectedLocalTime)
+            val now = LocalDateTime.now()
+
+            selectedDateTime.isAfter(now)
+        } catch (e: Exception) {
+            Log.e("BookingFragment", "Ошибка проверки времени", e)
+            false
+        }
     }
 
     private fun confirmBooking() {
@@ -317,6 +356,20 @@ class BookingFragment : Fragment() {
         if (userId == null) {
             Toast.makeText(requireContext(), "Ошибка: пользователь не найден", Toast.LENGTH_SHORT)
                 .show()
+            return
+        }
+
+        // Проверка, что выбранное время не в прошлом
+        if (!isSelectedTimeValid()) {
+            Toast.makeText(
+                requireContext(),
+                "Невозможно записаться на прошедшее время. Выберите другое время.",
+                Toast.LENGTH_LONG
+            ).show()
+            // Обновляем список доступных слотов
+            selectedDate?.dateString?.let { loadAvailableTimes(it) }
+            selectedTime = null
+            updateConfirmButtonState()
             return
         }
 

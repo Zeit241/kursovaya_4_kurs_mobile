@@ -45,13 +45,24 @@ class DoctorsFragment : Fragment() {
         return binding.root
     }
 
+    private var initialSpecialization: String? = null
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        // Получаем специализацию из аргументов навигации
+        initialSpecialization = arguments?.getString("specialization")
 
         setupRecyclerView()
         setupSearch()
         loadSpecializations()
-        loadDoctors()
+        
+        // Если есть начальная специализация, загружаем врачей с фильтром
+        if (initialSpecialization != null) {
+            loadDoctors(query = initialSpecialization)
+        } else {
+            loadDoctors()
+        }
     }
 
     private fun setupRecyclerView() {
@@ -144,15 +155,24 @@ class DoctorsFragment : Fragment() {
     private fun setupFilters(specializations: List<Specialization>) {
         binding.specialtyChipGroup.removeAllViews()
 
+        var chipToSelect: Chip? = null
+
         for (specialization in specializations) {
             val chip = Chip(requireContext()).apply {
                 text = specialization.name
                 isClickable = true
                 isCheckable = true
                 id = View.generateViewId() // Генерируем уникальный ID для чипа
+                tag = specialization.name // Сохраняем имя для сравнения
             }
 
             binding.specialtyChipGroup.addView(chip)
+
+            // Проверяем, нужно ли выбрать этот чип
+            if (initialSpecialization != null && 
+                specialization.name.equals(initialSpecialization, ignoreCase = true)) {
+                chipToSelect = chip
+            }
         }
 
         // Обработчик изменения выбора в ChipGroup
@@ -182,6 +202,16 @@ class DoctorsFragment : Fragment() {
                     searchBySpecialty(specialtyName)
                 }
             }
+        }
+
+        // Выбираем чип после установки слушателя (если есть начальная специализация)
+        chipToSelect?.let { chip ->
+            // Используем post чтобы выбор произошёл после завершения настройки
+            chip.post {
+                chip.isChecked = true
+            }
+            // Сбрасываем начальную специализацию чтобы не выбирать повторно
+            initialSpecialization = null
         }
     }
 

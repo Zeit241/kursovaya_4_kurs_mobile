@@ -14,20 +14,6 @@
         android:padding="16dp"
         android:paddingBottom="80dp">
 
-        <!-- Search Bar -->
-        <com.google.android.material.textfield.TextInputLayout
-            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="24dp"
-            app:startIconDrawable="@drawable/ic_search">
-
-            <com.google.android.material.textfield.TextInputEditText
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="Поиск докторов, специальностей..." />
-        </com.google.android.material.textfield.TextInputLayout>
-
         <!-- Quick Actions -->
         <TextView
             android:layout_width="wrap_content"
@@ -135,10 +121,21 @@
                 android:textColor="?attr/colorPrimary" />
         </LinearLayout>
 
-        <com.google.android.material.card.MaterialCardView
+        <!-- Container for upcoming appointments -->
+        <LinearLayout
+            android:id="@+id/containerUpcomingAppointments"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
+            android:orientation="vertical" />
+
+        <!-- Empty state for appointments -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/cardNoAppointments"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:visibility="gone"
             app:cardBackgroundColor="@android:color/transparent"
             app:cardCornerRadius="12dp"
             app:cardElevation="0dp"
@@ -148,55 +145,23 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:padding="16dp">
+                android:gravity="center"
+                android:orientation="vertical"
+                android:padding="24dp">
 
                 <ImageView
-                    android:layout_width="64dp"
-                    android:layout_height="64dp"
-                    android:background="@drawable/bg_circle_primary"
-                    android:padding="2dp"
-                    android:scaleType="centerCrop"
-                    android:src="@drawable/placeholder_doctor" />
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:src="@drawable/ic_calendar"
+                    android:alpha="0.5"
+                    app:tint="?attr/colorOnSurface" />
 
-                <LinearLayout
-                    android:layout_width="0dp"
+                <TextView
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="12dp"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Д-р. Анна Петрова"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Кардиолог" />
-
-                    <LinearLayout
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal">
-
-                        <ImageView
-                            android:layout_width="16dp"
-                            android:layout_height="16dp"
-                            android:src="@drawable/ic_calendar"
-                            app:tint="@color/primary_dark" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="4dp"
-                            android:text="Завтра, 10:00" />
-                    </LinearLayout>
-                </LinearLayout>
+                    android:layout_marginTop="8dp"
+                    android:text="Нет предстоящих записей"
+                    android:textColor="?android:attr/textColorSecondary" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
@@ -250,6 +215,15 @@
             android:layout_marginTop="12dp"
             android:orientation="vertical"
             android:paddingBottom="100dp" />
+
+        <!-- Loading indicator -->
+        <ProgressBar
+            android:id="@+id/progressBar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginTop="24dp"
+            android:visibility="gone" />
 
     </LinearLayout>
 </ScrollView>

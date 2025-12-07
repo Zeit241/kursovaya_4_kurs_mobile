@@ -4,3 +4,5 @@ data class BookAppointmentRequest(
     val appointmentId: Long,
     val userId: Long
 )
+
+

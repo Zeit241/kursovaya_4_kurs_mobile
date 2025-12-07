@@ -23,7 +23,7 @@ import kotlinx.coroutines.launch
 class LoginActivity : AppCompatActivity() {
     private lateinit var authRepository: AuthRepository
     private val authApiRepository = AuthApiRepository()
-    
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_login)
@@ -31,7 +31,6 @@ class LoginActivity : AppCompatActivity() {
         val emailEditText = findViewById<EditText>(R.id.editTextEmail)
         val passwordEditText = findViewById<EditText>(R.id.editTextPassword)
         val registration = findViewById<TextView>(R.id.textViewSignUp)
-        val rememberMe = findViewById<CheckBox>(R.id.checkboxRemember)
         val loginBtn = findViewById<Button>(R.id.buttonLogin)
 
         loginBtn.setOnClickListener { view ->
@@ -53,40 +52,65 @@ class LoginActivity : AppCompatActivity() {
                 authApiRepository.login(email, password)
                     .onSuccess { loginResponse ->
                         Log.d("LoginActivity", "Получен токен: ${loginResponse.token.take(20)}...")
-                        
+
                         // Сохраняем токен синхронно
                         authRepository.saveAuthToken(loginResponse.token)
                         Log.d("LoginActivity", "Токен сохранен")
-                        
+
                         // Проверяем, что токен сохранился
                         val savedToken = authRepository.getAuthState()
-                        Log.d("LoginActivity", "Проверка токена: ${savedToken.javaClass.simpleName}")
-                        
+                        Log.d(
+                            "LoginActivity",
+                            "Проверка токена: ${savedToken.javaClass.simpleName}"
+                        )
+
                         if (savedToken is AuthState.Authenticated) {
-                            Log.d("LoginActivity", "Токен подтвержден, загрузка данных пользователя...")
-                            
+                            Log.d(
+                                "LoginActivity",
+                                "Токен подтвержден, загрузка данных пользователя..."
+                            )
+
                             // Инициализируем UserDataRepository
                             UserDataRepository.init(this@LoginActivity)
-                            
+
                             // Загружаем данные пользователя
                             val userRepository = UserRepository(this@LoginActivity)
                             userRepository.getCurrentUser()
                                 .onSuccess { user ->
-                                    Log.d("LoginActivity", "Данные пользователя загружены: ${user.email}")
-                                    Toast.makeText(this@LoginActivity, "Успешный вход!", Toast.LENGTH_SHORT).show()
-                                    
-                                    val intent = Intent(this@LoginActivity, MainActivity::class.java)
-                                    intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                    Log.d(
+                                        "LoginActivity",
+                                        "Данные пользователя загружены: ${user.email}"
+                                    )
+                                    Toast.makeText(
+                                        this@LoginActivity,
+                                        "Успешный вход!",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+
+                                    val intent =
+                                        Intent(this@LoginActivity, MainActivity::class.java)
+                                    intent.flags =
+                                        Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                                     startActivity(intent)
                                     finish()
                                 }
                                 .onFailure { error ->
-                                    Log.e("LoginActivity", "Ошибка загрузки данных пользователя", error)
+                                    Log.e(
+                                        "LoginActivity",
+                                        "Ошибка загрузки данных пользователя",
+                                        error
+                                    )
                                     // Все равно переходим в MainActivity, данные загрузятся там
-                                    Toast.makeText(this@LoginActivity, "Успешный вход!", Toast.LENGTH_SHORT).show()
-                                    
-                                    val intent = Intent(this@LoginActivity, MainActivity::class.java)
-                                    intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                    Toast.makeText(
+                                        this@LoginActivity,
+                                        "Успешный вход!",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+
+                                    val intent =
+                                        Intent(this@LoginActivity, MainActivity::class.java)
+                                    intent.flags =
+                                        Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                                     startActivity(intent)
                                     finish()
                                 }
@@ -95,7 +119,8 @@ class LoginActivity : AppCompatActivity() {
                             Log.e("LoginActivity", "Токен не сохранился!")
                             loginBtn.isEnabled = true
                             loginBtn.text = "Войти"
-                            Snackbar.make(view, "Ошибка сохранения токена", Snackbar.LENGTH_LONG).show()
+                            Snackbar.make(view, "Ошибка сохранения токена", Snackbar.LENGTH_LONG)
+                                .show()
                         }
                     }
                     .onFailure { error ->
@@ -103,7 +128,7 @@ class LoginActivity : AppCompatActivity() {
                         // Разблокируем кнопку
                         loginBtn.isEnabled = true
                         loginBtn.text = "Войти"
-                        
+
                         val errorMessage = error.message ?: "Ошибка входа"
                         Snackbar.make(view, errorMessage, Snackbar.LENGTH_LONG).show()
                     }
