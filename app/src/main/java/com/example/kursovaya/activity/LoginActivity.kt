@@ -9,7 +9,6 @@ import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.example.kursovaya.R
 import com.example.kursovaya.model.AuthState
@@ -20,7 +19,7 @@ import com.example.kursovaya.repository.UserRepository
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.launch
 
-class LoginActivity : AppCompatActivity() {
+class LoginActivity : BaseActivity() {
     private lateinit var authRepository: AuthRepository
     private val authApiRepository = AuthApiRepository()
 

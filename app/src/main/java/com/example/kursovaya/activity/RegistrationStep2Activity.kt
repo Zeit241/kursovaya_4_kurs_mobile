@@ -6,7 +6,6 @@ import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.example.kursovaya.databinding.ActivityRegistrationStep2Binding
 import com.example.kursovaya.model.AuthState
@@ -21,7 +20,7 @@ import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 import java.util.Calendar
 
-class RegistrationStep2Activity : AppCompatActivity() {
+class RegistrationStep2Activity : BaseActivity() {
 
     private lateinit var binding: ActivityRegistrationStep2Binding
     private val authApiRepository = AuthApiRepository()

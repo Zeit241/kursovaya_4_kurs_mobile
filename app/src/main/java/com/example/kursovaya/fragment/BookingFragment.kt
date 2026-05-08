@@ -5,8 +5,10 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
@@ -20,10 +22,13 @@ import com.example.kursovaya.databinding.FragmentBookingBinding
 import com.example.kursovaya.model.DateItem
 import com.example.kursovaya.model.Doctor
 import com.example.kursovaya.model.TimeItem
+import com.example.kursovaya.model.api.ClinicServiceItem
 import com.example.kursovaya.model.api.toImageDataUri
 import com.example.kursovaya.repository.AppointmentRepository
+import com.example.kursovaya.repository.CatalogRepository
 import com.example.kursovaya.repository.DoctorsRepository
 import com.example.kursovaya.repository.UserDataRepository
+import com.example.kursovaya.util.ServicePriceFormatter
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -44,9 +49,12 @@ class BookingFragment : Fragment() {
     private var selectedTime: TimeItem? = null
     private var currentDoctor: Doctor? = null
     private var doctorId: Long? = null
+    private var selectedServiceId: Long? = null
+    private var doctorServicesList: List<ClinicServiceItem> = emptyList()
 
     private lateinit var appointmentRepository: AppointmentRepository
     private lateinit var doctorsRepository: DoctorsRepository
+    private lateinit var catalogRepository: CatalogRepository
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -61,6 +69,7 @@ class BookingFragment : Fragment() {
 
         appointmentRepository = AppointmentRepository(requireContext())
         doctorsRepository = DoctorsRepository(requireContext())
+        catalogRepository = CatalogRepository(requireContext())
 
         setupToolbar()
         setupDateRecyclerView()
@@ -71,6 +80,7 @@ class BookingFragment : Fragment() {
 
         if (doctorId != null) {
             loadDoctorInfo(doctorId!!)
+            setupServiceSelector(doctorId!!)
         } else {
             Toast.makeText(requireContext(), "Ошибка: ID врача не указан", Toast.LENGTH_SHORT)
                 .show()
@@ -87,6 +97,56 @@ class BookingFragment : Fragment() {
 
         binding.viewAppointmentsButton.setOnClickListener {
             findNavController().navigate(R.id.appointmentHistoryFragment)
+        }
+    }
+
+    private fun setupServiceSelector(doctorId: Long) {
+        val preFromArgs = arguments?.getString("SERVICE_ID")?.toLongOrNull()
+        lifecycleScope.launch {
+            val result = catalogRepository.getServicesForDoctor(doctorId)
+            result.onSuccess { list ->
+                if (_binding == null) return@onSuccess
+                doctorServicesList = list
+                val noneLabel = getString(R.string.booking_service_none)
+                val options = mutableListOf<Pair<Long?, String>>()
+                options.add(null to noneLabel)
+                list.filter { it.id != null && !it.name.isNullOrBlank() }.forEach { item ->
+                    options.add(item.id to item.name!!)
+                }
+                val labels = options.map { it.second }
+                val ddAdapter = ArrayAdapter(
+                    requireContext(),
+                    android.R.layout.simple_dropdown_item_1line,
+                    labels
+                )
+                binding.serviceAutoComplete.setAdapter(ddAdapter)
+
+                val idx = when {
+                    preFromArgs != null -> {
+                        val i = options.indexOfFirst { it.first == preFromArgs }
+                        if (i >= 0) i else 0
+                    }
+                    else -> 0
+                }
+                selectedServiceId = options[idx].first
+                binding.serviceAutoComplete.setText(labels[idx], false)
+
+                binding.serviceInputLayout.isVisible = options.size > 1
+                if (options.size <= 1) return@onSuccess
+
+                binding.serviceAutoComplete.setOnItemClickListener { _, _, position, _ ->
+                    selectedServiceId = options[position].first
+                    selectedDate?.dateString?.let { loadAvailableTimes(it) }
+                }
+
+                selectedDate?.dateString?.let { loadAvailableTimes(it) }
+            }
+            result.onFailure {
+                if (_binding == null) return@onFailure
+                doctorServicesList = emptyList()
+                binding.serviceInputLayout.isVisible = false
+                selectedServiceId = null
+            }
         }
     }
 
@@ -228,7 +288,11 @@ class BookingFragment : Fragment() {
                 binding.noAppointmentsCard.visibility = View.GONE
                 // Можно добавить ProgressBar здесь
 
-                appointmentRepository.getAvailableAppointments(doctorIdValue, date)
+                appointmentRepository.getAvailableAppointments(
+                    doctorIdValue,
+                    date,
+                    selectedServiceId
+                )
                     .onSuccess { appointments ->
                         if (_binding == null) return@launch
 
@@ -377,11 +441,13 @@ class BookingFragment : Fragment() {
             try {
                 binding.confirmBookingButton.isEnabled = false
 
-                appointmentRepository.bookAppointment(appointmentId, userId)
-                    .onSuccess { appointment ->
+                appointmentRepository.bookAppointment(appointmentId, userId, selectedServiceId)
+                    .onSuccess { _ ->
                         if (_binding == null) return@launch
 
                         Log.d("BookingFragment", "Запись успешно создана")
+                        val toastMsg = buildToastAfterBooking()
+                        Toast.makeText(requireContext(), toastMsg, Toast.LENGTH_LONG).show()
                         showConfirmationScreen()
                     }
                     .onFailure { error ->
@@ -404,6 +470,19 @@ class BookingFragment : Fragment() {
         }
     }
 
+    private fun buildToastAfterBooking(): String {
+        val sid = selectedServiceId ?: return getString(R.string.booking_success_toast_default)
+        val svc = doctorServicesList.firstOrNull { it.id == sid } ?: return getString(R.string.booking_success_toast_default)
+        val name = svc.name?.trim().orEmpty()
+        if (name.isEmpty()) return getString(R.string.booking_success_toast_default)
+        val rub = ServicePriceFormatter.formatRub(svc.price)
+        return if (rub != null) {
+            getString(R.string.booking_success_toast_with_price, name, rub)
+        } else {
+            getString(R.string.booking_success_toast_service_only, name)
+        }
+    }
+
     private fun showConfirmationScreen() {
         binding.bookingSelectionContainer.visibility = View.GONE
         binding.bookingConfirmationContainer.visibility = View.VISIBLE
@@ -422,10 +501,25 @@ class BookingFragment : Fragment() {
             formatter.format(dateObj)
         } ?: ""
         val time = selectedTime?.time ?: ""
-        val fee = currentDoctor?.consultationFee ?: "—"
 
         binding.summaryDate.text = "Дата: $date"
         binding.summaryTime.text = "Время: $time"
+
+        val sid = selectedServiceId
+        val svc = sid?.let { id -> doctorServicesList.firstOrNull { it.id == id } }
+        if (svc != null && !svc.name.isNullOrBlank()) {
+            binding.summaryServiceBlock.visibility = View.VISIBLE
+            binding.summaryServiceLine.text =
+                getString(R.string.booking_summary_service, svc.name!!.trim())
+            val rub = ServicePriceFormatter.formatRub(svc.price)
+            binding.summaryPriceLine.text = if (rub != null) {
+                getString(R.string.booking_summary_price, rub)
+            } else {
+                getString(R.string.service_price_unknown)
+            }
+        } else {
+            binding.summaryServiceBlock.visibility = View.GONE
+        }
     }
 
     override fun onDestroyView() {

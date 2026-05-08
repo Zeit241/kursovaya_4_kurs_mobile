@@ -1,11 +1,10 @@
 package com.example.kursovaya.activity
 
 import android.os.Bundle
-import androidx.appcompat.app.AppCompatActivity
 import com.example.kursovaya.R
 import com.example.kursovaya.fragment.ProfileFragment
 
-class UserProfileActivity : AppCompatActivity() {
+class UserProfileActivity : BaseActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

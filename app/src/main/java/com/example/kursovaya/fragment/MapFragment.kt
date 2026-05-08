@@ -75,7 +75,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     override fun onMapReady(mapboxMap: MapboxMap) {
         this.mapboxMap = mapboxMap
-        mapboxMap.setStyle(Style.Builder().fromUri("https://demotiles.maplibre.org/style.json")) { style: Style ->
+        mapboxMap.setStyle(Style.Builder().fromUri("asset://map_style_offline.json")) { style: Style ->
             styleRef = style
             addGeoJsonOverlay(style, mapboxMap)
             ensureRouteLayer(style)

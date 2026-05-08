@@ -10,6 +10,8 @@
         <item name="colorPrimary">@color/primary</item>
         <item name="colorOnPrimary">@color/primary_light</item>
         <!-- и так далее для остальных цветов Material 3 -->
+        <!-- API 35+: не форсить edge-to-edge, контент под статус-баром -->
+        <item name="android:windowOptOutEdgeToEdgeEnforcement" tools:targetApi="35">true</item>
     </style>
 
     <style name="TabTextAppearance">

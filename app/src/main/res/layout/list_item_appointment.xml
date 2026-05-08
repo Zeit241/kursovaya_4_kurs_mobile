@@ -142,6 +142,17 @@
                     tools:text="10:00 AM" />
             </LinearLayout>
 
+            <TextView
+                android:id="@+id/serviceLineTextView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:textAppearance="?attr/textAppearanceBody2"
+                android:textColor="?android:attr/textColorSecondary"
+                android:visibility="gone"
+                tools:text="Услуга: Консультация — 1 500 ₽"
+                tools:visibility="visible" />
+
         </LinearLayout>
 
         <LinearLayout

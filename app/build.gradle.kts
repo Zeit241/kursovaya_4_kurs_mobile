@@ -1,9 +1,24 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.navigation.safeargs)
     alias(libs.plugins.kotlin.parcelize)
 }
+
+val localProperties = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) {
+        FileInputStream(f).use { load(it) }
+    }
+}
+/** Static token Directus (те же права, что у админки на файлы) — для Glide GET /assets без 403 */
+val directusStaticToken: String = localProperties.getProperty("directus.static.token", "")
+
+fun escapeForBuildConfigField(value: String): String =
+    value.replace("\\", "\\\\").replace("\"", "\\\"")
 
 android {
     namespace = "com.example.kursovaya"
@@ -17,17 +32,30 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // Хост ПК с эмулятора; совпадает с Retrofit BASE_URL. Для физ. устройства — IP машины в LAN.
+        buildConfigField("String", "LOOPBACK_REPLACEMENT_HOST", "\"10.0.2.2\"")
+        buildConfigField(
+            "String",
+            "DIRECTUS_STATIC_TOKEN",
+            "\"${escapeForBuildConfigField(directusStaticToken)}\"",
+        )
     }
     buildFeatures {
         viewBinding = true
+        buildConfig = true
     }
     buildTypes {
+        debug {
+            // URL картинок с бэка часто приходят как http://localhost:8055/... — на эмуляторе туда ведёт 10.0.2.2
+            buildConfigField("boolean", "REWRITE_LOOPBACK_IN_IMAGE_URLS", "true")
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            buildConfigField("boolean", "REWRITE_LOOPBACK_IN_IMAGE_URLS", "false")
         }
     }
     compileOptions {
@@ -51,6 +79,10 @@ dependencies {
     implementation(libs.jts.core)
     implementation(libs.places)
     testImplementation(libs.junit)
+    testImplementation("org.mockito:mockito-core:5.1.1")
+    testImplementation("org.mockito.kotlin:mockito-kotlin:5.1.0")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
+    testImplementation("androidx.arch.core:core-testing:2.2.0")
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
@@ -67,6 +99,7 @@ dependencies {
 
     // Lifecycle
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.viewmodel.ktx)
 
     // Glide
     implementation(libs.glide)

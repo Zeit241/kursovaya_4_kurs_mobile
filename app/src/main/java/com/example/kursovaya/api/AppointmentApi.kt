@@ -21,7 +21,8 @@ interface AppointmentApi {
     @GET("api/appointments/available")
     suspend fun getAvailableAppointments(
         @Query("doctorId") doctorId: Long,
-        @Query("date") date: String
+        @Query("date") date: String,
+        @Query("serviceId") serviceId: Long? = null
     ): Response<List<AppointmentApi>>
     
     @POST("api/appointments/book")

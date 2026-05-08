@@ -29,7 +29,7 @@
                 android:id="@+id/searchInputEditText"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Поиск по имени или специальности..."
+                android:hint="Поиск на сервере по имени или специальности"
                 android:imeOptions="actionSearch"
                 android:inputType="text" />
         </com.google.android.material.textfield.TextInputLayout>
@@ -84,16 +84,48 @@
         android:layout_height="0dp"
         android:layout_weight="1">
 
-        <!-- Список врачей -->
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/recyclerViewDoctors"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:clipToPadding="false"
-            android:paddingHorizontal="16dp"
-            android:paddingVertical="8dp"
-            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-            tools:listitem="@layout/list_item_doctor_detailed" />
+            android:orientation="vertical">
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recyclerViewDoctors"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:clipToPadding="false"
+                android:paddingHorizontal="16dp"
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp"
+                app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                tools:listitem="@layout/list_item_doctor_detailed" />
+
+            <!-- Под списком: отступы, чтобы спиннер не наезжал на последнюю карточку -->
+            <FrameLayout
+                android:id="@+id/loadMoreFooter"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingTop="16dp"
+                android:paddingBottom="24dp"
+                android:visibility="gone">
+
+                <ProgressBar
+                    android:id="@+id/loadMoreProgress"
+                    style="?android:attr/progressBarStyle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_horizontal" />
+            </FrameLayout>
+        </LinearLayout>
+
+        <ProgressBar
+            android:id="@+id/initialLoadingProgress"
+            style="?android:attr/progressBarStyleLarge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:visibility="gone" />
 
         <!-- Пустое состояние -->
         <LinearLayout

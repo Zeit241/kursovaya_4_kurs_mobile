@@ -11,7 +11,10 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.kursovaya.R
@@ -24,19 +27,22 @@ import com.example.kursovaya.notification.QueueNotificationManager
 import com.example.kursovaya.model.api.toImageDataUri
 import com.example.kursovaya.repository.AuthRepository
 import com.example.kursovaya.repository.DoctorsRepository
-import com.example.kursovaya.websocket.QueueWebSocketClient
+import com.example.kursovaya.viewmodel.QueueSocketViewModel
+import com.example.kursovaya.viewmodel.QueueSocketViewModelFactory
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.launch
 
 class QueueFragment : Fragment() {
 
     private var _binding: FragmentQueueBinding? = null
     private val binding get() = _binding!!
     private lateinit var queueAdapter: QueueAdapter
-    private lateinit var webSocketClient: QueueWebSocketClient
+    private val socketViewModel: QueueSocketViewModel by activityViewModels {
+        QueueSocketViewModelFactory(requireActivity().application)
+    }
     private lateinit var authRepository: AuthRepository
     private lateinit var doctorsRepository: DoctorsRepository
     private val gson = Gson()
@@ -66,11 +72,7 @@ class QueueFragment : Fragment() {
         com.example.kursovaya.api.RetrofitClient.init(requireContext())
         authRepository = AuthRepository(requireContext())
         doctorsRepository = DoctorsRepository(requireContext())
-        
-        // Инициализация WebSocket клиента
-        webSocketClient = QueueWebSocketClient(authRepository)
-        setupWebSocketCallbacks()
-        
+
         // Инициализация менеджера уведомлений
         notificationManager = QueueNotificationManager(requireContext())
         
@@ -86,7 +88,29 @@ class QueueFragment : Fragment() {
         showEmptyState()
         // Запрашиваем разрешение на уведомления
         requestNotificationPermission()
-        connectWebSocket()
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch {
+                    socketViewModel.queueResponses.collect { handleWebSocketMessage(it) }
+                }
+                launch {
+                    socketViewModel.queueUpdates.collect { handleQueueUpdate(it) }
+                }
+                launch {
+                    socketViewModel.socketErrors.collect { showError(it) }
+                }
+                launch {
+                    socketViewModel.disconnectEvents.collect {
+                        subscribedDoctorIds.clear()
+                    }
+                }
+            }
+        }
+
+        if (socketViewModel.isConnected()) {
+            socketViewModel.getMyQueues()
+        }
     }
     
     private fun requestNotificationPermission() {
@@ -196,41 +220,6 @@ class QueueFragment : Fragment() {
         binding.bookAppointmentButton.setOnClickListener {
             // Переход на страницу с докторами при пустой очереди
             findNavController().navigate(R.id.nav_doctors)
-        }
-    }
-
-    private fun setupWebSocketCallbacks() {
-        webSocketClient.setOnConnectedCallback {
-            Log.d("QueueFragment", "WebSocket connected")
-            // После подключения запрашиваем очереди пользователя
-            webSocketClient.getMyQueues()
-        }
-
-        webSocketClient.setOnMessageCallback { response ->
-            handleWebSocketMessage(response)
-        }
-
-        webSocketClient.setOnQueueUpdateCallback { update ->
-            handleQueueUpdate(update)
-        }
-
-        webSocketClient.setOnErrorCallback { error ->
-            Log.e("QueueFragment", "WebSocket error", error)
-            showError("Ошибка подключения: ${error.message}")
-        }
-
-        webSocketClient.setOnDisconnectedCallback {
-            Log.d("QueueFragment", "WebSocket disconnected")
-            subscribedDoctorIds.clear()
-        }
-    }
-
-    private fun connectWebSocket() {
-        try {
-            webSocketClient.connect()
-        } catch (e: Exception) {
-            Log.e("QueueFragment", "Error connecting WebSocket", e)
-            showError("Не удалось подключиться к серверу")
         }
     }
 
@@ -437,7 +426,7 @@ class QueueFragment : Fragment() {
         doctorIds.forEach { doctorId ->
             if (!subscribedDoctorIds.contains(doctorId)) {
                 Log.d("QueueFragment", "Subscribing to queue updates for doctor $doctorId")
-                webSocketClient.subscribeToQueueUpdates(doctorId)
+                socketViewModel.subscribeToQueueUpdates(doctorId)
                 subscribedDoctorIds.add(doctorId)
                 Log.d("QueueFragment", "Successfully subscribed to doctor $doctorId. Total subscribed: ${subscribedDoctorIds.size}")
             } else {
@@ -514,9 +503,9 @@ class QueueFragment : Fragment() {
                 }
                 
                 // Перезагружаем все очереди для получения актуальных данных
-                if (webSocketClient.isConnected()) {
+                if (socketViewModel.isConnected()) {
                     Log.d("QueueFragment", "Reloading queues after update for doctor ${update.doctorId}")
-                    webSocketClient.getMyQueues()
+                    socketViewModel.getMyQueues()
                 }
             } catch (e: Exception) {
                 Log.e("QueueFragment", "Error handling queue update", e)
@@ -525,15 +514,10 @@ class QueueFragment : Fragment() {
     }
 
     override fun onDestroyView() {
-        super.onDestroyView()
-        // Отписываемся от всех обновлений очередей
-        webSocketClient.unsubscribeFromAllQueueUpdates()
         subscribedDoctorIds.clear()
         previousPositions.clear()
         userQueueEntries.clear()
-        // Не отменяем уведомления, чтобы пользователь мог их видеть
-        // notificationManager.cancelAllNotifications()
-        webSocketClient.disconnect()
         _binding = null
+        super.onDestroyView()
     }
 }

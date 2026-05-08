@@ -178,7 +178,19 @@ class HomeFragment : Fragment() {
 
         container.removeAllViews()
 
-        if (appointments.isEmpty()) {
+        // Фильтруем только будущие приемы
+        val currentTime = ZonedDateTime.now()
+        val futureAppointments = appointments.filter { appointment ->
+            try {
+                val appointmentTime = ZonedDateTime.parse(appointment.startTime)
+                appointmentTime.isAfter(currentTime)
+            } catch (e: Exception) {
+                Log.e("HomeFragment", "Error parsing appointment time: ${appointment.startTime}", e)
+                false
+            }
+        }
+
+        if (futureAppointments.isEmpty()) {
             emptyCard.visibility = View.VISIBLE
             container.visibility = View.GONE
             return
@@ -187,7 +199,7 @@ class HomeFragment : Fragment() {
         emptyCard.visibility = View.GONE
         container.visibility = View.VISIBLE
 
-        for (appointmentApi in appointments) {
+        for (appointmentApi in futureAppointments) {
             val cardView = inflater.inflate(R.layout.item_upcoming_appointment, container, false)
 
             val doctorNameTextView = cardView.findViewById<TextView>(R.id.textDoctorName)
@@ -217,15 +229,14 @@ class HomeFragment : Fragment() {
                 }
             }
 
-            // Фото доктора (Base64)
-            if (!appointmentApi.doctorPhoto.isNullOrBlank()) {
-                try {
-                    val imageBytes = android.util.Base64.decode(appointmentApi.doctorPhoto, android.util.Base64.DEFAULT)
-                    val bitmap = android.graphics.BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
-                    doctorPhotoImageView.setImageBitmap(bitmap)
-                } catch (e: Exception) {
-                    doctorPhotoImageView.setImageResource(R.drawable.placeholder_doctor)
-                }
+            val photoLoad = appointmentApi.doctorPhoto?.toImageDataUri()?.takeIf { it.isNotEmpty() }
+            if (!photoLoad.isNullOrBlank()) {
+                Glide.with(this@HomeFragment)
+                    .load(photoLoad)
+                    .placeholder(R.drawable.placeholder_doctor)
+                    .error(R.drawable.placeholder_doctor)
+                    .circleCrop()
+                    .into(doctorPhotoImageView)
             } else {
                 doctorPhotoImageView.setImageResource(R.drawable.placeholder_doctor)
             }
@@ -265,10 +276,7 @@ class HomeFragment : Fragment() {
             else -> AppointmentStatus.UPCOMING
         }
         
-        // Формируем URL для фото из Base64 (или null если нет фото)
-        val photoUrl = if (!doctorPhoto.isNullOrBlank()) {
-            "data:image/png;base64,$doctorPhoto"
-        } else null
+        val photoUrl = doctorPhoto?.toImageDataUri()?.takeIf { it.isNotEmpty() }
         
         return Appointment(
             id = id.toString(),
@@ -360,14 +368,16 @@ class HomeFragment : Fragment() {
             ratingTextView.text = String.format(Locale.US, "%.1f", doctorApi.rating ?: 0.0)
             reviewsTextView.text = "(${doctorApi.reviewCount ?: 0})"
 
-            // Загружаем фото врача
-            doctorApi.photoUrl?.toImageDataUri()?.let { imageUri ->
+            val homeDoctorPhoto = doctorApi.photoUrl?.toImageDataUri()?.takeIf { it.isNotEmpty() }
+            if (!homeDoctorPhoto.isNullOrBlank()) {
                 Glide.with(requireContext())
-                    .load(imageUri)
+                    .load(homeDoctorPhoto)
                     .placeholder(R.drawable.placeholder_doctor)
                     .error(R.drawable.placeholder_doctor)
                     .circleCrop()
                     .into(doctorImageView)
+            } else {
+                doctorImageView.setImageResource(R.drawable.placeholder_doctor)
             }
 
             // Клик на карточку - переход к профилю врача

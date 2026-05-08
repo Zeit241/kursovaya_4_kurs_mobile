@@ -13,6 +13,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.example.kursovaya.R
 import com.example.kursovaya.adapter.DoctorsAdapter
 import com.example.kursovaya.databinding.FragmentDoctorsBinding
@@ -23,23 +24,36 @@ import com.example.kursovaya.model.api.toImageDataUri
 import com.example.kursovaya.repository.DoctorsRepository
 import com.google.android.material.chip.Chip
 import com.google.android.material.snackbar.Snackbar
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class DoctorsFragment : Fragment() {
 
+    companion object {
+        private const val PAGE_SIZE = 20
+        private const val LOAD_MORE_THRESHOLD = 4
+    }
+
     private var _binding: FragmentDoctorsBinding? = null
     private val binding get() = _binding!!
     private lateinit var doctorsRepository: DoctorsRepository
     private lateinit var doctorsAdapter: DoctorsAdapter
+
+    /** Строка запроса для API-параметра `q` (поиск и фильтр по специальности на бэкенде). */
+    private var listQuery: String? = null
+    private var currentOffset = 0
+    private var hasMore = true
+    private var listGeneration = 0
+    private var isPagingLoading = false
+    private var refreshJob: Job? = null
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
         _binding = FragmentDoctorsBinding.inflate(inflater, container, false)
-        // Убеждаемся, что RetrofitClient инициализирован
         com.example.kursovaya.api.RetrofitClient.init(requireContext())
         doctorsRepository = DoctorsRepository(requireContext())
         return binding.root
@@ -50,18 +64,15 @@ class DoctorsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Получаем специализацию из аргументов навигации
-        initialSpecialization = arguments?.getString("specialization")
+        initialSpecialization = arguments?.getString("specialization")?.trim()?.takeIf { it.isNotEmpty() }
 
         setupRecyclerView()
         setupSearch()
         loadSpecializations()
-        
-        // Если есть начальная специализация, загружаем врачей с фильтром
-        if (initialSpecialization != null) {
-            loadDoctors(query = initialSpecialization)
-        } else {
-            loadDoctors()
+
+        if (initialSpecialization == null) {
+            listQuery = null
+            loadDoctors(reset = true)
         }
     }
 
@@ -87,14 +98,26 @@ class DoctorsFragment : Fragment() {
         binding.recyclerViewDoctors.apply {
             layoutManager = LinearLayoutManager(requireContext())
             adapter = doctorsAdapter
+            addOnScrollListener(object : RecyclerView.OnScrollListener() {
+                override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                    if (dy <= 0) return
+                    val lm = recyclerView.layoutManager as? LinearLayoutManager ?: return
+                    val total = lm.itemCount
+                    if (total == 0) return
+                    val lastVisible = lm.findLastVisibleItemPosition()
+                    if (lastVisible == RecyclerView.NO_POSITION) return
+                    if (lastVisible >= total - LOAD_MORE_THRESHOLD) {
+                        loadNextPage()
+                    }
+                }
+            })
         }
     }
 
     private var searchJob: Job? = null
-    private var isProgrammaticTextChange = false // Флаг для программного изменения текста
+    private var isProgrammaticTextChange = false
 
     private fun setupSearch() {
-        // Кнопка поиска
         binding.searchButton.setOnClickListener {
             performSearch()
         }
@@ -108,19 +131,17 @@ class DoctorsFragment : Fragment() {
             }
         }
 
-        // Поиск при изменении текста (с задержкой)
         binding.searchInputEditText.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
             override fun afterTextChanged(s: Editable?) {
-                // Пропускаем автоматический поиск при программном изменении текста
                 if (isProgrammaticTextChange) {
                     return
                 }
 
                 searchJob?.cancel()
                 searchJob = viewLifecycleOwner.lifecycleScope.launch {
-                    delay(500) // Задержка 500мс перед поиском
+                    delay(500)
                     if (_binding != null) {
                         performSearch()
                     }
@@ -141,9 +162,13 @@ class DoctorsFragment : Fragment() {
                     .onFailure { error ->
                         if (_binding == null) return@launch
                         Log.e("DoctorsFragment", "Error loading specializations", error)
-                        // Не показываем ошибку пользователю, просто не загружаем фильтры
+                        if (initialSpecialization != null) {
+                            listQuery = initialSpecialization
+                            loadDoctors(reset = true)
+                            initialSpecialization = null
+                        }
                     }
-            } catch (e: kotlinx.coroutines.CancellationException) {
+            } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 if (_binding == null) return@launch
@@ -151,7 +176,7 @@ class DoctorsFragment : Fragment() {
             }
         }
     }
-    
+
     private fun setupFilters(specializations: List<Specialization>) {
         binding.specialtyChipGroup.removeAllViews()
 
@@ -162,34 +187,31 @@ class DoctorsFragment : Fragment() {
                 text = specialization.name
                 isClickable = true
                 isCheckable = true
-                id = View.generateViewId() // Генерируем уникальный ID для чипа
-                tag = specialization.name // Сохраняем имя для сравнения
+                id = View.generateViewId()
+                tag = specialization.name
             }
 
             binding.specialtyChipGroup.addView(chip)
 
-            // Проверяем, нужно ли выбрать этот чип
-            if (initialSpecialization != null && 
-                specialization.name.equals(initialSpecialization, ignoreCase = true)) {
+            if (initialSpecialization != null &&
+                specialization.name.equals(initialSpecialization, ignoreCase = true)
+            ) {
                 chipToSelect = chip
             }
         }
 
-        // Обработчик изменения выбора в ChipGroup
         binding.specialtyChipGroup.setOnCheckedStateChangeListener { group, checkedIds ->
-            // Отменяем текущий поиск
             searchJob?.cancel()
 
             if (checkedIds.isEmpty()) {
-                // Если ничего не выбрано, показываем всех врачей
                 isProgrammaticTextChange = true
                 binding.searchInputEditText.setText("")
                 binding.searchInputEditText.post {
                     isProgrammaticTextChange = false
                 }
-                loadDoctors(query = null)
+                listQuery = null
+                loadDoctors(reset = true)
             } else {
-                // Находим выбранный чип и выполняем поиск по его специальности
                 val checkedChipId = checkedIds[0]
                 val checkedChip = group.findViewById<Chip>(checkedChipId)
                 checkedChip?.let {
@@ -204,28 +226,34 @@ class DoctorsFragment : Fragment() {
             }
         }
 
-        // Выбираем чип после установки слушателя (если есть начальная специализация)
-        chipToSelect?.let { chip ->
-            // Используем post чтобы выбор произошёл после завершения настройки
-            chip.post {
-                chip.isChecked = true
+        when {
+            chipToSelect != null -> {
+                val selectChip = chipToSelect
+                selectChip.post {
+                    selectChip.isChecked = true
+                }
+                initialSpecialization = null
             }
-            // Сбрасываем начальную специализацию чтобы не выбирать повторно
-            initialSpecialization = null
+            initialSpecialization != null -> {
+                listQuery = initialSpecialization
+                loadDoctors(reset = true)
+                initialSpecialization = null
+            }
         }
     }
 
     private fun searchBySpecialty(specialty: String) {
-        loadDoctors(query = specialty)
+        listQuery = specialty
+        loadDoctors(reset = true)
     }
 
     private fun performSearch() {
         val query = binding.searchInputEditText.text.toString().trim()
-        // Снимаем выделение с чипов при поиске по тексту
         if (query.isNotEmpty()) {
             clearChipSelection()
         }
-        loadDoctors(query = if (query.isNotEmpty()) query else null)
+        listQuery = query.takeIf { it.isNotEmpty() }
+        loadDoctors(reset = true)
     }
 
     private fun clearChipSelection() {
@@ -235,52 +263,142 @@ class DoctorsFragment : Fragment() {
         }
     }
 
-    private fun loadDoctors(query: String? = null) {
-        viewLifecycleOwner.lifecycleScope.launch {
+    /**
+     * Первая страница или смена фильтра/поиска.
+     */
+    private fun loadDoctors(reset: Boolean) {
+        if (!reset) {
+            loadNextPage()
+            return
+        }
+
+        refreshJob?.cancel()
+        listGeneration++
+        val generation = listGeneration
+        currentOffset = 0
+        hasMore = true
+        doctorsAdapter.updateDoctors(emptyList())
+
+        refreshJob = viewLifecycleOwner.lifecycleScope.launch {
+            if (_binding == null) return@launch
+            binding.initialLoadingProgress.visibility = View.VISIBLE
+            binding.recyclerViewDoctors.visibility = View.GONE
+            binding.emptyStateLayout.visibility = View.GONE
+
             try {
-                doctorsRepository.getDoctors(query = query)
-                    .onSuccess { doctorsApi ->
-                        // Проверяем, что view еще существует
-                        if (_binding == null) return@onSuccess
+                val result = doctorsRepository.getDoctors(
+                    query = listQuery?.takeIf { it.isNotBlank() },
+                    limit = PAGE_SIZE,
+                    offset = 0,
+                    sortBy = null,
+                    sortOrder = null
+                )
 
-                        val doctors = doctorsApi.map { it.toDoctor() }
-                        doctorsAdapter.updateDoctors(doctors)
-                        updateResultsCount(doctors.size)
-                        updateEmptyState(doctors.isEmpty())
-                        Log.d("DoctorsFragment", "Loaded ${doctors.size} doctors")
+                if (generation != listGeneration || _binding == null) return@launch
+
+                result.onSuccess { apiList ->
+                    if (generation != listGeneration || _binding == null) return@onSuccess
+
+                    val mapped = apiList.map { it.toDoctor() }
+                    doctorsAdapter.updateDoctors(mapped)
+                    currentOffset = apiList.size
+                    hasMore = apiList.size >= PAGE_SIZE
+
+                    val count = doctorsAdapter.itemCount
+                    updateResultsCount(count)
+                    updateEmptyState(count == 0)
+                    if (count > 0) {
+                        binding.recyclerViewDoctors.visibility = View.VISIBLE
                     }
-                    .onFailure { error ->
-                        // Игнорируем отмену корутины
-                        if (error is kotlinx.coroutines.CancellationException) {
-                            return@onFailure
-                        }
-
-                        // Проверяем, что view еще существует
-                        if (_binding == null) return@onFailure
-
-                        Log.e("DoctorsFragment", "Error loading doctors", error)
-                        Snackbar.make(
-                            binding.root,
-                            "Ошибка загрузки врачей: ${error.message}",
-                            Snackbar.LENGTH_LONG
-                        ).show()
-                    }
-            } catch (e: kotlinx.coroutines.CancellationException) {
-                // Игнорируем отмену корутины
+                    Log.d("DoctorsFragment", "Loaded first page: ${apiList.size} doctors, hasMore=$hasMore")
+                }.onFailure { error ->
+                    if (error is CancellationException) throw error
+                    if (_binding == null) return@onFailure
+                    Log.e("DoctorsFragment", "Error loading doctors", error)
+                    Snackbar.make(
+                        binding.root,
+                        "Ошибка загрузки врачей: ${error.message}",
+                        Snackbar.LENGTH_LONG
+                    ).show()
+                    updateEmptyState(true)
+                }
+            } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 if (_binding == null) return@launch
                 Log.e("DoctorsFragment", "Unexpected error", e)
+            } finally {
+                if (_binding != null) {
+                    binding.initialLoadingProgress.visibility = View.GONE
+                }
+            }
+        }
+    }
+
+    private fun loadNextPage() {
+        if (!hasMore || isPagingLoading) return
+        val generation = listGeneration
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            if (!hasMore || isPagingLoading || generation != listGeneration || _binding == null) {
+                return@launch
+            }
+            isPagingLoading = true
+            binding.loadMoreFooter.visibility = View.VISIBLE
+
+            try {
+                val result = doctorsRepository.getDoctors(
+                    query = listQuery?.takeIf { it.isNotBlank() },
+                    limit = PAGE_SIZE,
+                    offset = currentOffset,
+                    sortBy = null,
+                    sortOrder = null
+                )
+
+                if (generation != listGeneration || _binding == null) return@launch
+
+                result.onSuccess { apiList ->
+                    if (generation != listGeneration || _binding == null) return@onSuccess
+
+                    if (apiList.isEmpty()) {
+                        hasMore = false
+                    } else {
+                        val mapped = apiList.map { it.toDoctor() }
+                        doctorsAdapter.appendDoctors(mapped)
+                        currentOffset += apiList.size
+                        if (apiList.size < PAGE_SIZE) {
+                            hasMore = false
+                        }
+                    }
+
+                    val count = doctorsAdapter.itemCount
+                    updateResultsCount(count)
+                    Log.d("DoctorsFragment", "Loaded more: +${apiList.size}, total shown=$count")
+                }.onFailure { error ->
+                    if (error is CancellationException) throw error
+                    if (_binding == null) return@onFailure
+                    Log.e("DoctorsFragment", "Error loading more doctors", error)
+                    Snackbar.make(
+                        binding.root,
+                        "Не удалось подгрузить врачей: ${error.message}",
+                        Snackbar.LENGTH_SHORT
+                    ).show()
+                }
+            } finally {
+                isPagingLoading = false
+                if (_binding != null) {
+                    binding.loadMoreFooter.visibility = View.GONE
+                }
             }
         }
     }
 
     private fun updateResultsCount(count: Int) {
         if (_binding == null) return
-        binding.resultsCountTextView.text = when (count) {
-            0 -> ""
-            1 -> "Найден 1 врач"
-            else -> "Найдено $count врачей"
+        binding.resultsCountTextView.text = when {
+            count == 0 -> ""
+            hasMore -> getString(R.string.doctors_loaded_has_more, count)
+            else -> getString(R.string.doctors_loaded_count, count)
         }
     }
 
@@ -297,14 +415,14 @@ class DoctorsFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
-        // Отменяем все активные поиски
         searchJob?.cancel()
         searchJob = null
+        refreshJob?.cancel()
+        refreshJob = null
         _binding = null
     }
 }
 
-// Функция расширения для конвертации DoctorApi в Doctor
 private fun DoctorApi.toDoctor(): Doctor {
     val fullName = buildString {
         append(user.lastName)
@@ -316,7 +434,6 @@ private fun DoctorApi.toDoctor(): Doctor {
         }
     }.trim()
 
-    // Формируем строку специализаций из массива
     val specialtyText = if (!specializations.isNullOrEmpty()) {
         specializations.joinToString(", ") { it.name }
     } else {

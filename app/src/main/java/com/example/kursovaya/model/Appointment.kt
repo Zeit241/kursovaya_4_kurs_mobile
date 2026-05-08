@@ -24,5 +24,9 @@ data class Appointment(
     val experienceYears: Int = 0,
     val bio: String? = null,
     val diagnosis: String? = null,
-    val cancelReason: String? = null
+    val cancelReason: String? = null,
+    /** Название услуги, если была указана при записи */
+    val serviceName: String? = null,
+    /** Отформатированная цена (руб.) или null, если цену показывать не нужно / неизвестна */
+    val servicePriceDisplay: String? = null
 ): Parcelable

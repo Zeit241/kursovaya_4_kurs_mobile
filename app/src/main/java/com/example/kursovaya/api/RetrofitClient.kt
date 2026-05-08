@@ -2,6 +2,8 @@ package com.example.kursovaya.api
 
 import android.content.Context
 import android.util.Log
+import com.example.kursovaya.BuildConfig
+import com.example.kursovaya.auth.AuthSessionCoordinator
 import com.example.kursovaya.model.AuthState
 import com.example.kursovaya.repository.AuthRepository
 import okhttp3.Interceptor
@@ -70,9 +72,37 @@ object RetrofitClient {
             chain.proceed(newRequest)
         }
     }
+
+    /** 401 с Bearer → очистка сессии и редирект через [AuthSessionCoordinator]. */
+    private fun createUnauthorizedInterceptor(): Interceptor {
+        return Interceptor { chain ->
+            val request = chain.request()
+            val response = chain.proceed(request)
+            if (response.code != 401) return@Interceptor response
+
+            val hadAuth = !request.header("Authorization").isNullOrBlank()
+            val path = request.url.encodedPath
+            val isPublicAuthPath =
+                path.contains("/api/auth/login", ignoreCase = true) ||
+                    path.contains("/api/auth/register", ignoreCase = true)
+
+            if (hadAuth && !isPublicAuthPath) {
+                context?.let { AuthSessionCoordinator.notifyUnauthorized(it) }
+            }
+            response
+        }
+    }
     
+    /**
+     * Level.BODY буферизует всё тело ответа в String — при больших JSON (например фото в base64)
+     * легко получить OutOfMemoryError. Для отладки достаточно HEADERS.
+     */
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
-        level = HttpLoggingInterceptor.Level.BODY
+        level = if (BuildConfig.DEBUG) {
+            HttpLoggingInterceptor.Level.HEADERS
+        } else {
+            HttpLoggingInterceptor.Level.NONE
+        }
     }
     
     private val retrofit: Retrofit
@@ -80,6 +110,7 @@ object RetrofitClient {
             if (retrofitInstance == null) {
                 val okHttpClient = OkHttpClient.Builder()
                     .addInterceptor(createAuthInterceptor())
+                    .addInterceptor(createUnauthorizedInterceptor())
                     .addInterceptor(loggingInterceptor)
                     .connectTimeout(30, TimeUnit.SECONDS)
                     .readTimeout(30, TimeUnit.SECONDS)
@@ -115,5 +146,11 @@ object RetrofitClient {
     
     val dashboardApi: DashboardApi
         get() = retrofit.create(DashboardApi::class.java)
+
+    val catalogApi: CatalogApi
+        get() = retrofit.create(CatalogApi::class.java)
+
+    val clinicServicesApi: ClinicServicesApi
+        get() = retrofit.create(ClinicServicesApi::class.java)
 }
 

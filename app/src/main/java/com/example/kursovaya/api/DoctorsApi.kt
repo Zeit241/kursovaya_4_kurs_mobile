@@ -1,5 +1,6 @@
 package com.example.kursovaya.api
 
+import com.example.kursovaya.model.api.ApiResponse
 import com.example.kursovaya.model.api.DoctorApi
 import com.example.kursovaya.model.api.ReviewApi
 import com.example.kursovaya.model.api.Specialization
@@ -17,10 +18,10 @@ interface DoctorsApi {
         @Query("offset") offset: Int? = null,
         @Query("sortBy") sortBy: String? = null,
         @Query("sortOrder") sortOrder: String? = null
-    ): Response<List<DoctorApi>>
+    ): Response<ApiResponse<List<DoctorApi>>>
     
     @GET("api/doctors/{id}")
-    suspend fun getDoctorById(@retrofit2.http.Path("id") id: Long): Response<DoctorApi>
+    suspend fun getDoctorById(@retrofit2.http.Path("id") id: Long): Response<ApiResponse<DoctorApi>>
     
     @GET("api/specializations")
     suspend fun getSpecializations(): Response<List<Specialization>>

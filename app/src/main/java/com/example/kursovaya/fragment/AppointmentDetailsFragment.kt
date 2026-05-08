@@ -76,6 +76,8 @@ class AppointmentDetailsFragment : Fragment() {
         val appointmentDateTextView: TextView = view.findViewById(R.id.appointmentDateTextView)
         val appointmentTimeTextView: TextView = view.findViewById(R.id.appointmentTimeTextView)
         val appointmentRoomTextView: TextView = view.findViewById(R.id.appointmentRoomTextView)
+        val appointmentServiceRow: LinearLayout = view.findViewById(R.id.appointmentServiceRow)
+        val appointmentServiceTextView: TextView = view.findViewById(R.id.appointmentServiceTextView)
 
         // Contact info
         val phoneLayout: LinearLayout = view.findViewById(R.id.phoneLayout)
@@ -145,6 +147,19 @@ class AppointmentDetailsFragment : Fragment() {
 
         // Room
         appointmentRoomTextView.text = "№${appointment.roomCode} - ${appointment.roomName}"
+
+        val svcName = appointment.serviceName?.trim()
+        if (!svcName.isNullOrEmpty()) {
+            appointmentServiceRow.visibility = View.VISIBLE
+            val price = appointment.servicePriceDisplay
+            appointmentServiceTextView.text = if (!price.isNullOrEmpty()) {
+                getString(R.string.appointment_details_service_with_price, svcName, price)
+            } else {
+                getString(R.string.appointment_details_service_no_price, svcName)
+            }
+        } else {
+            appointmentServiceRow.visibility = View.GONE
+        }
 
         // Contact info
         if (!appointment.phone.isNullOrEmpty()) {

@@ -1,7 +1,7 @@
 package com.example.kursovaya.model.api
 
 data class Patient(
-    val id: Int,
+    val id: Long,
     val user: User,
     val birthDate: String,
     val gender: Short,

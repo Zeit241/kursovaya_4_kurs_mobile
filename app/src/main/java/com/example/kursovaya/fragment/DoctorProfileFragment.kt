@@ -52,8 +52,7 @@ class DoctorProfileFragment : Fragment() {
         TabLayoutMediator(binding.tabLayout, binding.viewPager) { tab, position ->
             tab.text = when (position) {
                 0 -> "О враче"
-                1 -> "Расписание"
-                2 -> "Отзывы"
+                1 -> "Отзывы"
                 else -> null
             }
         }.attach()

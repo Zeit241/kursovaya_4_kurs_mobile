@@ -2,6 +2,7 @@ package com.example.kursovaya.model.api
 
 import com.example.kursovaya.model.Appointment
 import com.example.kursovaya.model.AppointmentStatus
+import com.example.kursovaya.util.ServicePriceFormatter
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -33,6 +34,10 @@ fun AppointmentApi.toAppointment(
         "cancelled", "canceled" -> AppointmentStatus.CANCELLED
         else -> AppointmentStatus.UPCOMING
     }
+
+    val svc = service
+    val svcName = svc?.name?.trim()?.takeIf { it.isNotEmpty() }
+    val svcPrice = ServicePriceFormatter.formatRub(svc?.price)
     
     return Appointment(
         id = id.toString(),
@@ -53,7 +58,9 @@ fun AppointmentApi.toAppointment(
         experienceYears = doctorExperienceYears,
         bio = doctorBio,
         diagnosis = diagnosis,
-        cancelReason = cancelReason
+        cancelReason = cancelReason,
+        serviceName = svcName,
+        servicePriceDisplay = svcPrice
     )
 }
 

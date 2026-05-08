@@ -29,7 +29,18 @@ data class AppointmentApi(
     @SerializedName("cancelReason")
     val cancelReason: String?,
     @SerializedName("diagnosis")
-    val diagnosis: String?
+    val diagnosis: String?,
+    val service: AppointmentServiceApi? = null
+)
+
+/** Вложенная услуга в ответе записи (совпадает с полем service в JSON) */
+data class AppointmentServiceApi(
+    val id: Long? = null,
+    val name: String? = null,
+    val code: String? = null,
+    val price: Double? = null,
+    @SerializedName("durationMinutes") val durationMinutes: Int? = null,
+    val description: String? = null
 )
 
 

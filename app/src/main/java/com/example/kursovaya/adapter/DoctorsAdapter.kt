@@ -12,10 +12,12 @@ import com.example.kursovaya.R
 import com.example.kursovaya.model.Doctor
 
 class DoctorsAdapter(
-    private var doctors: List<Doctor>,
+    doctors: List<Doctor>,
     private val onDoctorClicked: (Doctor) -> Unit,
     private val onBookClicked: (Doctor) -> Unit
 ) : RecyclerView.Adapter<DoctorsAdapter.DoctorViewHolder>() {
+
+    private val doctors = doctors.toMutableList()
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): DoctorViewHolder {
         val view = LayoutInflater.from(parent.context)
@@ -30,8 +32,16 @@ class DoctorsAdapter(
     override fun getItemCount(): Int = doctors.size
 
     fun updateDoctors(newDoctors: List<Doctor>) {
-        doctors = newDoctors
+        doctors.clear()
+        doctors.addAll(newDoctors)
         notifyDataSetChanged()
+    }
+
+    fun appendDoctors(more: List<Doctor>) {
+        if (more.isEmpty()) return
+        val start = doctors.size
+        doctors.addAll(more)
+        notifyItemRangeInserted(start, more.size)
     }
 
     class DoctorViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {

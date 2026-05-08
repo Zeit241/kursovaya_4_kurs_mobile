@@ -3,6 +3,7 @@ import android.content.Context
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import com.example.kursovaya.model.AuthState
+import com.example.kursovaya.util.JwtUtils
 
 class AuthRepository(context: Context) {
 
@@ -39,5 +40,12 @@ class AuthRepository(context: Context) {
             .apply()
         // Очищаем данные пользователя при выходе
         UserDataRepository.clearUser()
+    }
+
+    /** true, если JWT с полем exp истёк (иначе false, в т.ч. при нестандартном токене). */
+    fun isAccessTokenExpired(leewaySeconds: Long = 60): Boolean {
+        val token = sharedPreferences.getString("access_token", null) ?: return false
+        if (token.isBlank()) return false
+        return JwtUtils.isExpired(token, leewaySeconds)
     }
 }

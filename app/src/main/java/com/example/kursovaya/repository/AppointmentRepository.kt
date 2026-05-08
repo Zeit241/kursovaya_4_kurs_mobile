@@ -192,10 +192,17 @@ class AppointmentRepository(context: Context) {
     /**
      * Получает список доступного времени записи для врача на указанную дату
      */
-    suspend fun getAvailableAppointments(doctorId: Long, date: String): Result<List<AppointmentApi>> {
+    suspend fun getAvailableAppointments(
+        doctorId: Long,
+        date: String,
+        serviceId: Long? = null
+    ): Result<List<AppointmentApi>> {
         return try {
-            Log.d("AppointmentRepository", "Запрос доступного времени для врача $doctorId на дату $date...")
-            val response = appointmentApi.getAvailableAppointments(doctorId, date)
+            Log.d(
+                "AppointmentRepository",
+                "Запрос доступного времени для врача $doctorId на дату $date, serviceId=$serviceId..."
+            )
+            val response = appointmentApi.getAvailableAppointments(doctorId, date, serviceId)
             
             Log.d("AppointmentRepository", "Response code: ${response.code()}")
             Log.d("AppointmentRepository", "Response isSuccessful: ${response.isSuccessful}")
@@ -225,10 +232,17 @@ class AppointmentRepository(context: Context) {
     /**
      * Бронирует запись на прием
      */
-    suspend fun bookAppointment(appointmentId: Long, userId: Long): Result<AppointmentApi> {
+    suspend fun bookAppointment(
+        appointmentId: Long,
+        userId: Long,
+        serviceId: Long? = null
+    ): Result<AppointmentApi> {
         return try {
-            Log.d("AppointmentRepository", "Бронирование записи $appointmentId для пользователя $userId...")
-            val request = BookAppointmentRequest(appointmentId, userId)
+            Log.d(
+                "AppointmentRepository",
+                "Бронирование записи $appointmentId для пользователя $userId, serviceId=$serviceId..."
+            )
+            val request = BookAppointmentRequest(appointmentId, userId, serviceId)
             val response = appointmentApi.bookAppointment(request)
             
             Log.d("AppointmentRepository", "Response code: ${response.code()}")

@@ -23,6 +23,12 @@ class DoctorsRepository(context: Context) {
         sortOrder: String? = null
     ): Result<List<DoctorApi>> {
         return try {
+            val lim = limit ?: Int.MAX_VALUE
+            val off = offset ?: 0
+            if (sortBy == null && sortOrder == null && limit != null && offset != null) {
+                DoctorsListCache.get(query, lim, off)?.let { return Result.success(it) }
+            }
+
             val response = doctorsApi.getDoctors(
                 query = query,
                 limit = limit,
@@ -32,11 +38,21 @@ class DoctorsRepository(context: Context) {
             )
             
             if (response.isSuccessful) {
-                val doctors = response.body()
-                if (doctors != null) {
-                    Result.success(doctors)
+                val apiResponse = response.body()
+                if (apiResponse != null && apiResponse.isSuccessful()) {
+                    val doctors = apiResponse.data
+                    if (doctors != null) {
+                        if (sortBy == null && sortOrder == null && limit != null && offset != null) {
+                            DoctorsListCache.put(query, lim, off, doctors)
+                        }
+                        Result.success(doctors)
+                    } else {
+                        Result.failure(Exception("Данные врачей отсутствуют в ответе"))
+                    }
                 } else {
-                    Result.failure(Exception("Пустой ответ от сервера"))
+                    val errorMessage = apiResponse?.message ?: "Ошибка получения списка врачей"
+                    Log.e("DoctorsRepository", errorMessage)
+                    Result.failure(Exception(errorMessage))
                 }
             } else {
                 val errorMessage = "Ошибка получения списка врачей: ${response.code()}"
@@ -63,11 +79,18 @@ class DoctorsRepository(context: Context) {
             val response = doctorsApi.getDoctorById(id)
             
             if (response.isSuccessful) {
-                val doctor = response.body()
-                if (doctor != null) {
-                    Result.success(doctor)
+                val apiResponse = response.body()
+                if (apiResponse != null && apiResponse.isSuccessful()) {
+                    val doctor = apiResponse.data
+                    if (doctor != null) {
+                        Result.success(doctor)
+                    } else {
+                        Result.failure(Exception("Данные врача отсутствуют в ответе"))
+                    }
                 } else {
-                    Result.failure(Exception("Пустой ответ от сервера"))
+                    val errorMessage = apiResponse?.message ?: "Ошибка получения врача"
+                    Log.e("DoctorsRepository", errorMessage)
+                    Result.failure(Exception(errorMessage))
                 }
             } else {
                 val errorMessage = "Ошибка получения врача: ${response.code()}"
